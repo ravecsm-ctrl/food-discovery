@@ -14,10 +14,27 @@ test("two people swipe on one phone, disagree once, and confirm a joint pick", a
   await setup.getByLabel("Partner's name").fill("Sam");
   await setup.getByRole("button", { name: "Shellfish" }).click();
   await expect(setup.getByRole("button", { name: "Shellfish" })).toHaveAttribute("aria-pressed", "true");
-  await setup.getByRole("button", { name: "Start together" }).click();
+  await setup.getByRole("button", { name: "Next" }).click();
+
+  // "What have you two eaten recently?" — attributed, session-only.
+  const meals = page.getByTestId("together-meals");
+  await expect(meals.getByRole("heading", { name: "What have you two eaten recently?" })).toBeVisible();
+  await meals.getByPlaceholder("e.g. Adobo, ramen, pizza").fill("tonkotsu");
+  await meals.getByRole("button", { name: "Tonkotsu Ramen", exact: true }).click();
+  await meals.getByRole("group", { name: "Who had it" }).getByRole("button", { name: "Sam" }).click();
+  await meals.getByRole("button", { name: "Last night" }).click();
+  await meals.getByPlaceholder("e.g. Adobo, ramen, pizza").fill("adobo");
+  await meals.getByRole("button", { name: "Chicken Adobo", exact: true }).click();
+  await meals.getByRole("group", { name: "Who had it" }).getByRole("button", { name: "Both" }).click();
+  await meals.getByRole("button", { name: "Yesterday lunch" }).click();
+  await expect(meals.getByTestId("together-meal")).toHaveCount(2);
+  await expect(meals.getByTestId("together-meal").first()).toContainText("Sam");
+  await meals.getByRole("button", { name: "Start swiping" }).click();
 
   const card = page.getByTestId("food-card");
   await expect(card).toBeVisible();
+  const firstCard = await card.getAttribute("data-dish-id");
+  expect(["dish-tonkotsu-ramen", "dish-chicken-adobo"]).not.toContain(firstCard);
   await expect(page.getByRole("button", { name: "We like it" })).toBeVisible();
 
   // AT-013 shared vote, AT-014 disagreement with attribution.
@@ -59,6 +76,8 @@ test("two people swipe on one phone, disagree once, and confirm a joint pick", a
   const everything = await page.evaluate(() => JSON.stringify({ ...localStorage }));
   expect(everything).not.toMatch(/Rave|Sam/);
   expect(await page.evaluate(() => localStorage.getItem("fd.restrictions.device.v1"))).toBeNull();
+  // The pair's recent meals were for tonight only: not in anyone's history, not in the session record.
+  expect(everything).not.toMatch(/togetherMeals|"who"/);
   // Choosing is not eating: no meal was logged.
   expect(await page.evaluate(() => localStorage.getItem("fd.meals.v1"))).toBeNull();
 });

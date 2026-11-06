@@ -2,14 +2,24 @@
  * Pure, immutable solo-session state (ENG-016/ENG-017, R-007, ETD §4.4).
  * Every transition returns a new object; nothing here touches the browser or clock directly.
  */
-import type { CardExposure, ReactionStrength, ReactionValue, Reaction, SessionConstraints } from "./types.ts";
+import type { CardExposure, ConfirmedMeal, ReactionStrength, ReactionValue, Reaction, SessionConstraints } from "./types.ts";
 
 export type SessionMode = "solo" | "together";
+
+/**
+ * Together Mode only: a recent meal the pair typed in for tonight's decision, and who had it.
+ * Session-only — never written to anyone's meal history or synced (PRRD R-022).
+ */
+export interface TogetherMeal extends ConfirmedMeal {
+  who: "a" | "b" | "both";
+}
 
 export interface DiscoverySession {
   sessionId: string;
   /** "together" = two people sharing one phone (PRRD J-03). */
   mode: SessionMode;
+  /** Together Mode recent meals (session-only). Empty for solo sessions. */
+  togetherMeals: TogetherMeal[];
   seed: number;
   policyId: string;
   catalogVersion: string;
@@ -33,10 +43,12 @@ export function createSession(args: {
   now: string;
   initialBudget: number;
   mode?: SessionMode;
+  togetherMeals?: TogetherMeal[];
 }): DiscoverySession {
   return {
     sessionId: args.sessionId,
     mode: args.mode ?? "solo",
+    togetherMeals: args.mode === "together" ? (args.togetherMeals ?? []) : [],
     seed: args.seed,
     policyId: args.policyId,
     catalogVersion: args.catalogVersion,

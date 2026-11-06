@@ -25,6 +25,7 @@ import {
   type DiscoverySession,
   type EngineDeps,
   type ParticipantNames,
+  type TogetherMeal,
   type ReactionValue,
   type RecommendationRun,
   type RestrictionKey,
@@ -51,9 +52,10 @@ import { DishArt } from "./DishArt";
 import { DishDetails, DishLabel, RESTRICTION_LABELS, SafetyNote } from "./DishInfo";
 import { RecentMealsStep } from "./RecentMealsStep";
 import { Sheet } from "./Sheet";
+import { TogetherMealsStep } from "./TogetherMealsStep";
 import { SwipeCard } from "./SwipeCard";
 
-type Phase = "home" | "recent-meals" | "together-setup" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
+type Phase = "home" | "recent-meals" | "together-setup" | "together-meals" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
 
 interface OutcomeContext {
   sessionId: string;
@@ -110,6 +112,8 @@ export function DiscoveryApp() {
   const [exhaustedNotice, setExhaustedNotice] = useState(false);
   /** Together Mode display names — kept in memory only, never stored or synced. */
   const [pair, setPair] = useState<ParticipantNames | null>(null);
+  /** Setup chosen on the first Together screen, held until the recent-meals step finishes. */
+  const [togetherSetup, setTogetherSetup] = useState<{ names: ParticipantNames; partner: RestrictionKey[] } | null>(null);
   const [disagreeOpen, setDisagreeOpen] = useState(false);
   const [jointConfirm, setJointConfirm] = useState<{ dishId: string; rank: number } | null>(null);
   const runTriggers = useRef<RecommendationRunRecord["trigger"][]>([]);
@@ -238,7 +242,7 @@ export function DiscoveryApp() {
 
   /** Together Mode on one phone (PRRD J-03): both people's restrictions apply; no personal history is used. */
   const startTogether = useCallback(
-    (names: ParticipantNames, partnerRestrictions: RestrictionKey[]) => {
+    (names: ParticipantNames, partnerRestrictions: RestrictionKey[], togetherMeals: TogetherMeal[]) => {
       const setting = getAssignmentSetting();
       const asg = setting === "rotation" ? "rotation" : "manual";
       const policyId = setting === "rotation" ? rotatePolicy(listEvalSessions().length) : setting;
@@ -252,8 +256,10 @@ export function DiscoveryApp() {
         now: nowIso(),
         initialBudget: policy.session.initialBudget,
         mode: "together",
+        togetherMeals,
       });
       runTriggers.current = [];
+      setTogetherSetup(null);
       setPair(names);
       setAssignment(asg);
       setExhaustedNotice(false);
@@ -396,6 +402,7 @@ export function DiscoveryApp() {
     setTraces({});
     setOutcome(null);
     setPair(null);
+    setTogetherSetup(null);
     setDisagreeOpen(false);
     setJointConfirm(null);
     setPending(pendingOutcome());
@@ -454,7 +461,24 @@ export function DiscoveryApp() {
 
         {phase === "recent-meals" && <RecentMealsStep onContinue={start} onBack={goHome} />}
 
-        {phase === "together-setup" && <TogetherSetup ownRestrictions={restrictions} onStart={startTogether} onBack={goHome} />}
+        {phase === "together-setup" && (
+          <TogetherSetup
+            ownRestrictions={restrictions}
+            onStart={(names, partner) => {
+              setTogetherSetup({ names, partner });
+              setPhase("together-meals");
+            }}
+            onBack={goHome}
+          />
+        )}
+
+        {phase === "together-meals" && togetherSetup && (
+          <TogetherMealsStep
+            names={togetherSetup.names}
+            onContinue={(meals) => startTogether(togetherSetup.names, togetherSetup.partner, meals)}
+            onBack={() => setPhase("together-setup")}
+          />
+        )}
 
         {phase === "discover" && session && (
           <section className="flex flex-1 flex-col" aria-label="Food cards">
@@ -1039,7 +1063,7 @@ function TogetherSetup(props: { ownRestrictions: RestrictionKey[]; onStart: (nam
         </div>
       </fieldset>
 
-      <p className="mt-5 text-xs text-muted">Together mode only uses what you both do now — not either person&apos;s meal history. Names aren&apos;t saved.</p>
+      <p className="mt-5 text-xs text-muted">Together mode doesn&apos;t use either person&apos;s saved meal history — next you can say what you&apos;ve eaten recently, for tonight only. Names aren&apos;t saved.</p>
 
       <div className="mt-auto pb-2 pt-6">
         <button
@@ -1047,7 +1071,7 @@ function TogetherSetup(props: { ownRestrictions: RestrictionKey[]; onStart: (nam
           onClick={() => props.onStart({ a: a.trim() || "You", b: b.trim() || "Partner" }, partner)}
           className="h-14 w-full rounded-full bg-accent text-lg font-semibold text-accent-ink"
         >
-          Start together
+          Next
         </button>
       </div>
     </section>

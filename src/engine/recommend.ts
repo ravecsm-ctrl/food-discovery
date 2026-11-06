@@ -11,7 +11,7 @@ import { activeReactions, effectiveCardCount, shownDishIds, type DiscoverySessio
 import { dishSimilarity, sharedAttributes } from "./similarity.ts";
 import type { Dish, FulfillmentStatus, ReasonCode, SafetyAssessment } from "./types.ts";
 import { tieBreak } from "./rng.ts";
-import { depsForSession, jointScore } from "./together.ts";
+import { depsForSession, jointScore, participantUsers } from "./together.ts";
 
 export interface RecommendationItem {
   rank: number;
@@ -56,6 +56,7 @@ export function inputDigest(session: DiscoverySession, deps: EngineDeps): string
     k: session.constraints,
     r: activeReactions(session).map((r) => [r.dishId, r.value, r.strength, r.participant ?? ""]),
     md: session.mode,
+    tm: session.togetherMeals.map((m) => [m.id, m.dishId, m.consumedAt, m.who]),
     m: deps.user.confirmedMeals.map((m) => [m.id, m.dishId, m.consumedAt]),
     w: deps.user.stableAttributeWeights,
     n: deps.user.noveltyPreference,
@@ -97,13 +98,14 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
   const cfg = deps.policy.shortlist;
   const candidates = buildCandidates(deps.catalog, session.constraints);
   const inputs = scoringInputs(session, deps);
+  const users = together ? participantUsers(session) : undefined;
   // "Not tonight" removes a dish for this session. In Together Mode only a SHARED No does; a dish one
   // person wanted stays a candidate and the joint score decides (ETD §8.10).
   const rejectedNow = new Set(inputs.reactions.filter((x) => x.value === "no" && !x.participant).map((x) => x.dishId));
 
   const scored = candidates.eligible
     .filter((d) => !rejectedNow.has(d.id))
-    .map((d) => ({ dish: d, score: together ? jointScore(d, inputs) : scoreDish(d, inputs) }))
+    .map((d) => ({ dish: d, score: together ? jointScore(d, inputs, users) : scoreDish(d, inputs) }))
     .sort(
       (a, b) =>
         b.score.utility - a.score.utility ||

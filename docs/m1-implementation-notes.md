@@ -158,7 +158,7 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 **Evaluation:** the Lab's card-policy comparison counts solo sessions only (Together sessions use a different, joint objective).
 
 **Deviations / open issues**
-- **D-17** Together Mode ignores taste fatigue and recent meals (privacy on a shared screen). A future option: an optional, session-only "what have you two eaten recently?" question.
+- **D-17** Together Mode ignores *stored* history (privacy on a shared screen). **Update 2026-11-07 (owner request after first real use):** an optional, session-only step "What have you two eaten recently?" now asks for recent meals and **who had each one** (Both / person A / person B). Each person's meals drive taste fatigue on their side of the joint score (`participantUsers`), meals they both had count for both, and anything either just ate goes to the back of the card queue. These meals are never written to anyone's meal history, the session record or the cloud (engine + browser tests).
 - **I-18** "We disagree" records only who wanted the dish, not strength of feeling. Revisit if real use shows people want "only Sam, and Rave really doesn't".
 
 **Live verification (2026-11-07):** migration applied with `supabase db push` after owner approval. With temporary guests: a Together session (shared vote, undone disagreement, joint decision) round-tripped exactly with no names stored and no meal created; another guest could neither overwrite nor see it; the new internal helpers return *permission denied* to signed-in users; test guests deleted.

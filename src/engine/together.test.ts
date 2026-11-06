@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { explainItem } from "./explain.ts";
 import { recommend, readiness } from "./recommend.ts";
 import { scoringInputs, selectNextCard } from "./selection.ts";
-import { activeReactions, addExposure, canUndo, createSession, effectiveCardCount, recordReaction, recordSplitReaction, undoLastReaction, type DiscoverySession } from "./session.ts";
-import { JOINT_V0, jointScore } from "./together.ts";
+import { activeReactions, addExposure, canUndo, createSession, effectiveCardCount, recordReaction, recordSplitReaction, undoLastReaction, type DiscoverySession, type TogetherMeal } from "./session.ts";
+import { JOINT_V0, jointScore, participantUsers } from "./together.ts";
+import { EMPTY_USER } from "./scoring.ts";
 import { DEFAULT_CONSTRAINTS } from "./eligibility.ts";
 import { catalog, deps, meal, NOW } from "./test-helpers.ts";
 import type { RestrictionKey } from "./types.ts";
@@ -12,7 +13,7 @@ import type { RestrictionKey } from "./types.ts";
 const POLICY = "adaptive-v2";
 const names = { a: "Rave", b: "Sam" };
 
-function together(avoid: RestrictionKey[] = []): DiscoverySession {
+function together(avoid: RestrictionKey[] = [], togetherMeals: TogetherMeal[] = []): DiscoverySession {
   return createSession({
     sessionId: "t1",
     seed: 7,
@@ -22,8 +23,10 @@ function together(avoid: RestrictionKey[] = []): DiscoverySession {
     now: NOW,
     initialBudget: 10,
     mode: "together",
+    togetherMeals,
   });
 }
+const ate = (id: string, dishId: string, hoursAgo: number, who: TogetherMeal["who"]): TogetherMeal => ({ ...meal(id, dishId, hoursAgo), who });
 const shared = (s: DiscoverySession, dishId: string, v: "yes" | "no") => recordReaction(addExposure(s, dishId, NOW), v, NOW);
 const split = (s: DiscoverySession, dishId: string, wantedBy: "a" | "b") => recordSplitReaction(addExposure(s, dishId, NOW), wantedBy, NOW);
 
@@ -123,5 +126,50 @@ describe("privacy and safety (R-022, R-023)", () => {
       if (claims.some((c) => c.key === "pork" || c.key === "shellfish")) expect(item.safety.status).toBe("possible_conflict");
     }
     expect(readiness(s, deps(POLICY)).exhausted).toBe(false);
+  });
+});
+
+describe("what you two ate recently (session-only taste fatigue)", () => {
+  const fried = (who: TogetherMeal["who"]) => [ate("m1", "dish-lechon-kawali", 14, who), ate("m2", "dish-korean-fried-chicken", 20, who), ate("m3", "dish-pork-tonkatsu", 30, who)];
+
+  it("a person's meals lower only THEIR side; meals you both had lower both", () => {
+    const dish = catalog.byId.get("dish-chicken-karaage")!;
+    const base = jointScore(dish, scoringInputs(together(), deps(POLICY)), { a: { ...EMPTY_USER }, b: { ...EMPTY_USER } });
+    const sOnlyB = together([], fried("b"));
+    const onlyB = jointScore(dish, scoringInputs(sOnlyB, deps(POLICY)), participantUsers(sOnlyB));
+    expect(onlyB.perParticipant.a).toBeCloseTo(base.perParticipant.a, 12);
+    expect(onlyB.perParticipant.b).toBeLessThan(base.perParticipant.b);
+    const sBoth = together([], fried("both"));
+    const both = jointScore(dish, scoringInputs(sBoth, deps(POLICY)), participantUsers(sBoth));
+    expect(both.perParticipant.a).toBeLessThan(base.perParticipant.a);
+    expect(both.utility).toBeLessThan(onlyB.utility);
+  });
+
+  it("dishes either of you just ate go to the back of the card queue", () => {
+    let s = together([], [ate("m1", "dish-chicken-pho", 3, "a"), ate("m2", "dish-bulalo", 10, "b")]);
+    const shown: string[] = [];
+    for (let i = 0; i < 25; i++) {
+      const next = selectNextCard(s, deps(POLICY));
+      if (!next) break;
+      shown.push(next.dishId);
+      s = recordReaction(addExposure(s, next.dishId, NOW), "no", NOW);
+    }
+    expect(shown).not.toContain("dish-chicken-pho");
+    expect(shown).not.toContain("dish-bulalo");
+  });
+
+  it("picks steer away from what you both just had and can say so", () => {
+    let s = together([], fried("both"));
+    s = shared(s, "dish-chicken-pho", "yes");
+    s = shared(s, "dish-pork-sisig", "yes");
+    const run = recommend(s, deps(POLICY));
+    expect(run.items.map((i) => i.dishId)).not.toContain("dish-lechon-kawali");
+    const texts = run.items.flatMap((i) => explainItem(i, catalog, "reactions", names).map((e) => e.text)).join(" ");
+    if (run.items.some((i) => i.reasonCodes.includes("RECENT_FOOD_VARIETY"))) expect(texts).toMatch(/you've had recently/);
+  });
+
+  it("solo sessions never carry Together meals", () => {
+    const solo = createSession({ sessionId: "s", seed: 1, policyId: POLICY, catalogVersion: catalog.catalogVersion, constraints: DEFAULT_CONSTRAINTS, now: NOW, initialBudget: 10, togetherMeals: fried("both") });
+    expect(solo.togetherMeals).toEqual([]);
   });
 });
