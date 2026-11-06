@@ -16,7 +16,7 @@ export default defineConfig({
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: `npx next start -p ${PORT}`,
+    command: `NEXT_TELEMETRY_DISABLED=1 npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: false,
     timeout: 120_000,

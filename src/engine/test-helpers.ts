@@ -10,12 +10,12 @@ import type { ConfirmedMeal, ReactionValue, SessionConstraints, UserModel } from
 export const NOW = "2026-11-06T12:00:00.000Z";
 export const catalog = loadCatalog();
 
-export function deps(policyId = "adaptive-v0", user: UserModel = EMPTY_USER, overrides?: Partial<PolicyConfig>): EngineDeps {
+export function deps(policyId = "adaptive-v1", user: UserModel = EMPTY_USER, overrides?: Partial<PolicyConfig>): EngineDeps {
   const policy = { ...getPolicy(policyId), ...overrides };
   return { catalog, policy, user, now: NOW };
 }
 
-export function newSession(policyId = "adaptive-v0", seed = 42, constraints: Partial<SessionConstraints> = {}): DiscoverySession {
+export function newSession(policyId = "adaptive-v1", seed = 42, constraints: Partial<SessionConstraints> = {}): DiscoverySession {
   return createSession({
     sessionId: "s1",
     seed,

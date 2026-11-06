@@ -41,6 +41,17 @@ export interface PolicyConfig {
     appeal: number;
     information: number;
     coverage: number;
+    /**
+     * "affine": appeal = (U+1)/2 (ETD literal). "minmax": each term rescaled to 0..1 across the
+     * current candidate pool so the 0.60/0.25/0.15 weights actually discriminate (deviation D-05).
+     */
+    termNormalization: "affine" | "minmax";
+    /**
+     * "uncertainty": 1 − |C| (ETD literal; favours dishes with NO evidence, i.e. irrelevant ones).
+     * "evidence_weighted": (1 − |C|) × evidence — favours dishes where liked and rejected signals
+     * compete, and gives unrelated dishes 0 (ETD §8.8 intent; deviation D-05).
+     */
+    informationProxy: "uncertainty" | "evidence_weighted";
     /** Cold start: first N cards are chosen from recognizable dishes, maximizing variety. */
     coldStartCards: number;
     coldStartMinRecognizability: number;
@@ -74,7 +85,7 @@ type SharedParams = Pick<
 >;
 
 /** Returns a fresh copy so policies never share mutable objects. */
-function shared(): SharedParams {
+function shared(nextCardMode: Pick<PolicyConfig["nextCard"], "termNormalization" | "informationProxy">): SharedParams {
   return {
   utilityWeights: { stable: 0.35, current: 0.45, softContext: 0.1, novelty: 0.1 },
   reactionWeights: { ordinary: 1, explicit: 1.5, explicitCap: 2 },
@@ -88,7 +99,7 @@ function shared(): SharedParams {
     structure: 0.14,
     richness: 0.04,
   },
-  nextCard: { appeal: 0.6, information: 0.25, coverage: 0.15, coldStartCards: 3, coldStartMinRecognizability: 0.8 },
+  nextCard: { appeal: 0.6, information: 0.25, coverage: 0.15, ...nextCardMode, coldStartCards: 3, coldStartMinRecognizability: 0.8 },
   shortlist: {
     maxItems: 3,
     nearDuplicateSimilarity: 0.8,
@@ -120,6 +131,11 @@ const EXPOSURE_ON: PolicyConfig["exposure"] = {
 
 const EXPOSURE_OFF: PolicyConfig["exposure"] = { ...EXPOSURE_ON, enabled: false };
 
+/** ETD §8.8 taken literally. Kept for comparison; see D-05 for why it under-adapts. */
+const ETD_LITERAL = { termNormalization: "affine", informationProxy: "uncertainty" } as const;
+/** Default from v1: normalized terms + evidence-weighted information proxy. */
+const NORMALIZED = { termNormalization: "minmax", informationProxy: "evidence_weighted" } as const;
+
 export const POLICIES: Record<string, PolicyConfig> = {
   "baseline-fixed-v0": {
     id: "baseline-fixed-v0",
@@ -127,25 +143,36 @@ export const POLICIES: Record<string, PolicyConfig> = {
     experimentArm: "A/B (fixed curated sequence; shortlist ranked from reactions)",
     cardSelection: "fixed",
     exposure: EXPOSURE_OFF,
-    ...shared(),
+    ...shared(NORMALIZED),
   },
   "adaptive-v0": {
     id: "adaptive-v0",
+    label: "Adaptive (ETD-literal next-card terms) — reference only",
+    experimentArm: "C (adaptive card selection, ETD §8.8 literal)",
+    cardSelection: "adaptive",
+    exposure: EXPOSURE_OFF,
+    ...shared(ETD_LITERAL),
+  },
+  "adaptive-v1": {
+    id: "adaptive-v1",
     label: "Adaptive — next card responds to reactions",
     experimentArm: "C (adaptive card selection)",
     cardSelection: "adaptive",
     exposure: EXPOSURE_OFF,
-    ...shared(),
+    ...shared(NORMALIZED),
   },
-  "adaptive-exposure-v0": {
-    id: "adaptive-exposure-v0",
+  "adaptive-exposure-v1": {
+    id: "adaptive-exposure-v1",
     label: "Adaptive + recent-meal exposure",
     experimentArm: "D (adds conservative recent-food exposure)",
     cardSelection: "adaptive",
     exposure: EXPOSURE_ON,
-    ...shared(),
+    ...shared(NORMALIZED),
   },
 };
+
+/** Policies used for new sessions under rotation (the comparison arms). */
+export const ACTIVE_POLICY_IDS = ["baseline-fixed-v0", "adaptive-v1", "adaptive-exposure-v1"];
 
 export const POLICY_IDS = Object.keys(POLICIES);
 

@@ -30,7 +30,7 @@ const PHO = "dish-chicken-pho";
 const TINOLA = "dish-chicken-tinola";
 const CARBONARA = "dish-spaghetti-carbonara";
 const SINIGANG_SHRIMP = "dish-shrimp-sinigang";
-const W = getPolicy("adaptive-v0").similarityKindWeights;
+const W = getPolicy("adaptive-v1").similarityKindWeights;
 
 const dish = (id: string) => catalog.byId.get(id)!;
 const util = (s: DiscoverySession, id: string, d = deps()) => scoreDish(dish(id), scoringInputs(s, d)).utility;
@@ -115,7 +115,7 @@ describe("ENG-010 current-session learning (ALG-002/003, R-008)", () => {
   it("documents ETD-literal 'global' normalization dilution (deviation D-03)", () => {
     let s = reactTo(newSession(), PHO, "yes");
     for (const id of ["dish-sweet-sour-pork", "dish-margherita-pizza", "dish-beef-bulgogi", "dish-tteokbokki", "dish-pork-tonkatsu"]) s = reactTo(s, id, "no");
-    const literal = deps("adaptive-v0", undefined, { currentAppetite: { normalization: "global", similarityFloor: 0, kernelExponent: 1, priorStrength: 0 } });
+    const literal = deps("adaptive-v1", undefined, { currentAppetite: { normalization: "global", similarityFloor: 0, kernelExponent: 1, priorStrength: 0 } });
     expect(current(s, PHO, literal)).toBeLessThan(0.2);
     expect(current(s, PHO)).toBeGreaterThan(0.5);
   });
@@ -184,7 +184,7 @@ describe("ALG-005 / AT-005 temporary rejection of a stable favorite", () => {
 
 describe("ENG-011 exposure (ALG-006/007/008, R-012)", () => {
   const exp = (meals: ReturnType<typeof meal>[], id: string) =>
-    exposureAdjustment(id, scoringInputs(newSession(), deps("adaptive-exposure-v0", { stableAttributeWeights: {}, confirmedMeals: meals, noveltyPreference: 0.5 })));
+    exposureAdjustment(id, scoringInputs(newSession(), deps("adaptive-exposure-v1", { stableAttributeWeights: {}, confirmedMeals: meals, noveltyPreference: 0.5 })));
 
   it("ALG-006: recent fried meals lower similar fried dishes, within the cap", () => {
     const meals = [meal("m1", "dish-lechon-kawali", 10), meal("m2", "dish-korean-fried-chicken", 30), meal("m3", "dish-chicken-adobo", 50), meal("m4", "dish-bulalo", 60)];
@@ -220,11 +220,11 @@ describe("ENG-011 exposure (ALG-006/007/008, R-012)", () => {
 
   it("recent meals change ranking order in the exposure-aware policy", () => {
     const meals = ["dish-lechon-kawali", "dish-pork-tonkatsu", "dish-korean-fried-chicken", "dish-chicken-karaage"].map((id, i) => meal(`m${i}`, id, 6 + i * 12));
-    let s = newSession("adaptive-exposure-v0");
+    let s = newSession("adaptive-exposure-v1");
     s = reactTo(s, "dish-sweet-sour-pork", "yes");
     s = reactTo(s, "dish-chicken-pho", "yes");
-    const withMeals = deps("adaptive-exposure-v0", { stableAttributeWeights: {}, confirmedMeals: meals, noveltyPreference: 0.5 });
-    const noMeals = deps("adaptive-exposure-v0");
+    const withMeals = deps("adaptive-exposure-v1", { stableAttributeWeights: {}, confirmedMeals: meals, noveltyPreference: 0.5 });
+    const noMeals = deps("adaptive-exposure-v1");
     const gap = (dd: ReturnType<typeof deps>) => util(s, "dish-chicken-pho", dd) - util(s, "dish-sweet-sour-pork", dd);
     expect(gap(withMeals)).toBeGreaterThan(gap(noMeals));
   });
@@ -246,7 +246,7 @@ describe("ENG-009 hard constraints (ALG-009/010, AT-009/010, R-009, R-023)", () 
   });
 
   it("hard exclusions never re-enter under any seed or policy (property)", () => {
-    for (const policyId of ["baseline-fixed-v0", "adaptive-v0", "adaptive-exposure-v0"]) {
+    for (const policyId of ["baseline-fixed-v0", "adaptive-v0", "adaptive-v1", "adaptive-exposure-v1"]) {
       for (let seed = 0; seed < 5; seed++) {
         const { shown, session } = runPolicy(newSession(policyId, seed, { avoidedIngredients: ["pork", "peanut"] }), deps(policyId), 60, (_id, i) => (i % 3 ? "yes" : "no"));
         for (const id of shown) {
@@ -281,7 +281,7 @@ describe("ENG-009 hard constraints (ALG-009/010, AT-009/010, R-009, R-023)", () 
 
 describe("ENG-012/013 card policies (ALG-011, ALG-018, R-004, R-014)", () => {
   it("ALG-011: identical seed and inputs → identical order and shortlist", () => {
-    for (const policyId of ["baseline-fixed-v0", "adaptive-v0", "adaptive-exposure-v0"]) {
+    for (const policyId of ["baseline-fixed-v0", "adaptive-v0", "adaptive-v1", "adaptive-exposure-v1"]) {
       const react = (id: string) => (dish(id).attributes["texture:brothy"] ? "yes" : "no");
       const a = runPolicy(newSession(policyId, 123), deps(policyId), 10, react);
       const b = runPolicy(newSession(policyId, 123), deps(policyId), 10, react);
@@ -299,7 +299,7 @@ describe("ENG-012/013 card policies (ALG-011, ALG-018, R-004, R-014)", () => {
   });
 
   it("adaptive order responds to reactions", () => {
-    const d = deps("adaptive-v0");
+    const d = deps("adaptive-v1");
     const brothy = runPolicy(newSession(), d, 8, (id) => (dish(id).attributes["texture:brothy"] ? "yes" : "no")).shown;
     const crispy = runPolicy(newSession(), d, 8, (id) => (dish(id).attributes["texture:crispy"] ? "yes" : "no")).shown;
     expect(brothy.slice(0, 3)).toEqual(crispy.slice(0, 3)); // cold start identical
@@ -312,10 +312,27 @@ describe("ENG-012/013 card policies (ALG-011, ALG-018, R-004, R-014)", () => {
     let adaptive = 0;
     let baseline = 0;
     for (let seed = 0; seed < 10; seed++) {
-      adaptive += count(runPolicy(newSession("adaptive-v0", seed), deps("adaptive-v0"), 10, likesBrothy).shown);
+      adaptive += count(runPolicy(newSession("adaptive-v1", seed), deps("adaptive-v1"), 10, likesBrothy).shown);
       baseline += count(runPolicy(newSession("baseline-fixed-v0", seed), deps("baseline-fixed-v0"), 10, likesBrothy).shown);
     }
     expect(adaptive).toBeGreaterThan(baseline);
+  });
+
+  it("D-05: normalized next-card terms (v1) adapt more than the ETD-literal terms (v0)", () => {
+    const likesBrothy = (id: string) => ((dish(id).attributes["texture:brothy"] ?? 0) >= 0.8 ? "yes" : "no");
+    const yesAfterColdStart = (policyId: string) => {
+      let n = 0;
+      for (let seed = 0; seed < 10; seed++) n += runPolicy(newSession(policyId, seed), deps(policyId), 10, likesBrothy).shown.slice(3).filter((id) => likesBrothy(id) === "yes").length;
+      return n;
+    };
+    expect(yesAfterColdStart("adaptive-v1")).toBeGreaterThan(yesAfterColdStart("adaptive-v0"));
+  });
+
+  it("D-05: evidence-weighted information is zero for dishes unrelated to any reaction", () => {
+    const s = reactTo(newSession(), PHO, "yes");
+    const unrelated = currentAppetite("dish-sweet-sour-pork", scoringInputs(s, deps()));
+    expect(unrelated.evidence).toBe(0);
+    expect(currentAppetite(TINOLA, scoringInputs(s, deps())).evidence).toBeGreaterThan(0);
   });
 
   it("never repeats a dish within a session and exhausts cleanly", () => {
@@ -328,7 +345,7 @@ describe("ENG-012/013 card policies (ALG-011, ALG-018, R-004, R-014)", () => {
 
   it("ALG-018: baseline and adaptive draw from the same eligible set", () => {
     const constraints = { avoidedIngredients: ["beef" as const] };
-    const a = runPolicy(newSession("adaptive-v0", 5, constraints), deps("adaptive-v0"), 100, () => "yes").shown;
+    const a = runPolicy(newSession("adaptive-v1", 5, constraints), deps("adaptive-v1"), 100, () => "yes").shown;
     const b = runPolicy(newSession("baseline-fixed-v0", 5, constraints), deps("baseline-fixed-v0"), 100, () => "yes").shown;
     expect(new Set(a)).toEqual(new Set(b));
   });
@@ -415,8 +432,8 @@ describe("ENG-015 grounded explanations (R-013)", () => {
   });
 
   it("no personal-history claims without history", () => {
-    const { session } = runPolicy(newSession("adaptive-exposure-v0"), deps("adaptive-exposure-v0"), 6, () => "yes");
-    for (const item of recommend(session, deps("adaptive-exposure-v0")).items) {
+    const { session } = runPolicy(newSession("adaptive-exposure-v1"), deps("adaptive-exposure-v1"), 6, () => "yes");
+    for (const item of recommend(session, deps("adaptive-exposure-v1")).items) {
       expect(item.reasonCodes).not.toContain("RECENT_FOOD_VARIETY");
       expect(item.reasonCodes).not.toContain("NOVELTY_EXPLORATION");
     }
@@ -424,8 +441,8 @@ describe("ENG-015 grounded explanations (R-013)", () => {
 
   it("variety reason appears only when recent confirmed meals exist and the dish differs", () => {
     const meals = ["dish-lechon-kawali", "dish-pork-tonkatsu", "dish-korean-fried-chicken"].map((id, i) => meal(`m${i}`, id, 5 + i));
-    const d = deps("adaptive-exposure-v0", { stableAttributeWeights: {}, confirmedMeals: meals, noveltyPreference: 0.5 });
-    const s = reactTo(newSession("adaptive-exposure-v0"), PHO, "yes");
+    const d = deps("adaptive-exposure-v1", { stableAttributeWeights: {}, confirmedMeals: meals, noveltyPreference: 0.5 });
+    const s = reactTo(newSession("adaptive-exposure-v1"), PHO, "yes");
     const item = recommend(s, d).items.find((i) => i.dishId === PHO)!;
     expect(item.reasonCodes).toContain("RECENT_FOOD_VARIETY");
   });

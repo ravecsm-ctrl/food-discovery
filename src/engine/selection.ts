@@ -91,16 +91,34 @@ export function selectNextCard(session: DiscoverySession, deps: EngineDeps): Car
   }
 
   const inputs = scoringInputs(session, deps);
-  const scored = unseen.map((d) => {
+  const raw = unseen.map((d) => {
     const s = scoreDish(d, inputs);
-    const appeal = (s.utility + 1) / 2;
-    const information = 1 - Math.abs(s.current);
-    const coverage = 1 - maxSimilarityTo(d.id, shown, deps);
-    const q = r9(cfg.appeal * appeal + cfg.information * information + cfg.coverage * coverage);
-    return { d, q };
+    const uncertainty = 1 - Math.abs(s.current);
+    return {
+      d,
+      appeal: (s.utility + 1) / 2,
+      information: cfg.informationProxy === "evidence_weighted" ? uncertainty * s.currentEvidence : uncertainty,
+      coverage: 1 - maxSimilarityTo(d.id, shown, deps),
+    };
+  });
+  const norm = cfg.termNormalization === "minmax" ? minMaxNormalizer(raw) : (x: (typeof raw)[number]) => x;
+  const scored = raw.map((x) => {
+    const n = norm(x);
+    return { d: x.d, q: r9(cfg.appeal * n.appeal + cfg.information * n.information + cfg.coverage * n.coverage) };
   });
   const best = argmax(scored, (x) => [x.q, tieBreak(session.seed, x.d.id)]);
   return { dishId: best.d.id, reason: "adaptive_utility", q: best.q };
+}
+
+type Terms = { appeal: number; information: number; coverage: number };
+
+/** Rescale each term to 0..1 across the candidate pool (a constant term becomes 0.5). */
+function minMaxNormalizer<T extends Terms>(rows: readonly T[]): (x: T) => Terms {
+  const keys = ["appeal", "information", "coverage"] as const;
+  const lo = Object.fromEntries(keys.map((k) => [k, Math.min(...rows.map((r) => r[k]))])) as Terms;
+  const hi = Object.fromEntries(keys.map((k) => [k, Math.max(...rows.map((r) => r[k]))])) as Terms;
+  const scale = (k: keyof Terms, v: number) => (hi[k] - lo[k] < 1e-12 ? 0.5 : (v - lo[k]) / (hi[k] - lo[k]));
+  return (x) => ({ appeal: scale("appeal", x.appeal), information: scale("information", x.information), coverage: scale("coverage", x.coverage) });
 }
 
 function argmax<T>(items: readonly T[], key: (t: T) => number[]): T {

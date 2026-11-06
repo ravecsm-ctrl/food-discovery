@@ -13,6 +13,8 @@ export interface ScoreBreakdown {
   dishId: string;
   stable: number;
   current: number;
+  /** Amount of relevant current-session evidence behind `current`, 0..1. */
+  currentEvidence: number;
   softContext: number;
   novelty: number;
   /** Raw exposure E (0..cap) and resulting adjustment R (≤ 0). */
@@ -53,11 +55,15 @@ function reactionWeight(r: Reaction, policy: PolicyConfig): number {
 }
 
 /** ETD §8.4 current appetite C(u,d) ∈ [-1,1]. 0 when there are no active reactions. */
-export function currentAppetite(dishId: string, inputs: ScoringInputs): { value: number; supportingLikes: ScoreBreakdown["supportingLikes"] } {
+export function currentAppetite(
+  dishId: string,
+  inputs: ScoringInputs,
+): { value: number; evidence: number; supportingLikes: ScoreBreakdown["supportingLikes"] } {
   const { policy, catalog } = inputs;
   const cfg = policy.currentAppetite;
   let num = 0;
   let den = 0;
+  let mass = 0;
   const supportingLikes: ScoreBreakdown["supportingLikes"] = [];
   for (const r of inputs.reactions) {
     if (!r.active) continue;
@@ -69,15 +75,19 @@ export function currentAppetite(dishId: string, inputs: ScoringInputs): { value:
     if (cfg.normalization === "global") {
       num += w * sim;
       den += Math.abs(w);
+      mass += Math.abs(w) * sim;
     } else {
       const k = Math.max(0, (sim - cfg.similarityFloor) / (1 - cfg.similarityFloor)) ** cfg.kernelExponent;
       num += w * k;
       den += Math.abs(w) * k;
+      mass += Math.abs(w) * k;
     }
   }
   if (cfg.normalization === "kernel") den += cfg.priorStrength;
   supportingLikes.sort((a, b) => b.similarity - a.similarity || a.dishId.localeCompare(b.dishId));
-  return { value: den === 0 ? 0 : clamp(num / den, -1, 1), supportingLikes };
+  // evidence ∈ [0,1): how much relevant session evidence exists for this dish (0 = none).
+  const evidence = mass / (mass + Math.max(cfg.priorStrength, 1e-9));
+  return { value: den === 0 ? 0 : clamp(num / den, -1, 1), evidence, supportingLikes };
 }
 
 const HOUR_MS = 3_600_000;
@@ -139,12 +149,12 @@ export function noveltyScore(dishId: string, inputs: ScoringInputs): number {
 export function scoreDish(dish: Dish, inputs: ScoringInputs): ScoreBreakdown {
   const w = inputs.policy.utilityWeights;
   const stable = weightAlignment(inputs.user.stableAttributeWeights, dish);
-  const { value: current, supportingLikes } = currentAppetite(dish.id, inputs);
+  const { value: current, evidence: currentEvidence, supportingLikes } = currentAppetite(dish.id, inputs);
   const softContext = weightAlignment(inputs.softAttributeWeights, dish);
   const novelty = noveltyScore(dish.id, inputs);
   const { exposure, adjustment } = exposureAdjustment(dish.id, inputs);
   const utility = clamp(w.stable * stable + w.current * current + w.softContext * softContext + w.novelty * novelty + adjustment, -1, 1);
-  return { dishId: dish.id, stable, current, softContext, novelty, exposure, exposureAdjustment: adjustment, utility, supportingLikes };
+  return { dishId: dish.id, stable, current, currentEvidence, softContext, novelty, exposure, exposureAdjustment: adjustment, utility, supportingLikes };
 }
 
 export const EMPTY_USER: UserModel = { stableAttributeWeights: {}, confirmedMeals: [], noveltyPreference: 0.5 };
