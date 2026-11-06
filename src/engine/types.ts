@@ -20,6 +20,10 @@ export type FoodAttributeKind = (typeof ATTRIBUTE_KINDS)[number];
 /** Attribute id format: `${kind}:${slug}` e.g. "flavor:sour". */
 export type AttributeId = `${FoodAttributeKind}:${string}`;
 
+/** Editorial "how it's typically eaten" labels shown on cards and used by taste fatigue (D-08). */
+export const DISH_STYLES = ["comfort", "light_fresh", "hearty", "street_food", "rich_indulgent", "sharing"] as const;
+export type DishStyle = (typeof DISH_STYLES)[number];
+
 export type EvidenceStatus = "curated" | "verified_source" | "inferred" | "unknown";
 
 /** Keys a person can declare as hard avoidances. Generic dish claims only — never recipe guarantees. */
@@ -52,6 +56,7 @@ export interface Dish {
   familyId: string | null;
   name: string;
   cuisine: string;
+  style: DishStyle;
   description: string;
   tags: string[];
   /** 0 = light, 1 = very rich. Editorial estimate. */
@@ -105,8 +110,10 @@ export interface ConfirmedMeal {
   unrecognizedName?: string | null;
   consumedAt: ISODateTime;
   confirmed: true;
-  /** "synthetic" meals are test fixtures entered in the prototype lab. */
-  source: "selection_confirmation" | "manual" | "synthetic";
+  /** "synthetic" meals are test fixtures entered in the prototype lab; "recall" = typed into the recent-meals opener. */
+  source: "selection_confirmation" | "manual" | "recall" | "synthetic";
+  /** True when the time is an approximation ("last night"). */
+  timeApprox?: boolean;
 }
 
 export interface UserModel {
@@ -115,6 +122,11 @@ export interface UserModel {
   confirmedMeals: ConfirmedMeal[];
   /** 0..1; 0.5 = neutral. */
   noveltyPreference: number;
+  /**
+   * How strongly recent meals should push towards variety (taste fatigue v2).
+   * 0.5 = "I like routine", 1 = normal, 1.5 = "I get bored quickly". Defaults to 1.
+   */
+  varietySeeking?: number;
 }
 
 export interface SessionConstraints {

@@ -1,4 +1,4 @@
-import { attributeWord, type Dish, type RestrictionKey, type SafetyAssessment } from "@/engine";
+import { STYLE_LABELS, attributeWord, cuisineName, type Dish, type RestrictionKey, type SafetyAssessment } from "@/engine";
 
 export const RESTRICTION_LABELS: Record<RestrictionKey, string> = {
   shellfish: "Shellfish (shrimp, crab, etc.)",
@@ -17,8 +17,15 @@ export const RESTRICTION_LABELS: Record<RestrictionKey, string> = {
 
 const shortLabel = (k: RestrictionKey) => (RESTRICTION_LABELS[k].split(" (")[0] ?? k).split(" /")[0]?.toLowerCase() ?? k;
 
-export function cuisineLabel(c: string): string {
-  return c.charAt(0).toUpperCase() + c.slice(1);
+export const cuisineLabel = cuisineName;
+
+/** "Filipino · Comfort food" — identity line shown on cards and results. */
+export function DishLabel({ dish, className = "" }: { dish: Dish; className?: string }) {
+  return (
+    <p className={`text-[12px] font-semibold uppercase tracking-wide text-accent ${className}`} data-testid="dish-label">
+      {cuisineName(dish.cuisine)} · {STYLE_LABELS[dish.style]}
+    </p>
+  );
 }
 
 /** Safety note shown only when the person has declared avoidances. Never claims safety. */
@@ -46,6 +53,7 @@ function attrsOf(dish: Dish, kind: string): string[] {
 export function DishDetails({ dish, safety }: { dish: Dish; safety: SafetyAssessment }) {
   const rows: Array<[string, string]> = [
     ["Cuisine", cuisineLabel(dish.cuisine)],
+    ["Style", `${STYLE_LABELS[dish.style]} (editorial label)`],
     ["Main components", attrsOf(dish, "ingredient").join(", ")],
     ["Cooking method", attrsOf(dish, "method").join(", ")],
     ["Flavor", attrsOf(dish, "flavor").join(", ")],

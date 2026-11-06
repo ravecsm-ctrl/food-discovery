@@ -27,8 +27,9 @@ For a GitHub Pages *project* site (`https://<user>.github.io/<repo>/`), build wi
 `BASE_PATH=/<repo> npm run export`.
 Then open the URL in Safari on your phone → Share → **Add to Home Screen**.
 
-Notes: anyone with the URL can open the app. Your reactions, meals and restrictions stay in your phone's
-browser storage and are never uploaded. There is no offline mode yet, so it needs a connection to open.
+Notes: anyone with the URL can open the app. Your reactions and meals stay in your phone's browser storage.
+The only upload is the optional backup to your own private GitHub repository (set up under "Your data").
+There is no offline mode yet, so it needs a connection to open.
 
 ## Test it
 

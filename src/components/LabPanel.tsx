@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadCatalog } from "@/catalog";
 import { POLICIES, POLICY_IDS, type ConfirmedMeal } from "@/engine";
+import { disconnect } from "@/lib/cloud-backup";
 import { summarize, toCsv } from "@/lib/evaluation";
 import {
   addMeal,
@@ -245,6 +246,7 @@ export function LabPanel() {
           className="rounded-full bg-no px-4 py-2 text-sm font-semibold text-white"
           onClick={() => {
             if (window.confirm("Delete all prototype sessions, meals, and settings stored in this browser? This cannot be undone.")) {
+              disconnect(); // never let an empty phone overwrite the GitHub backup
               clearAllLocalData();
               refresh();
             }

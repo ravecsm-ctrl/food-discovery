@@ -3,7 +3,49 @@
  * Every sentence must be backed by a code AND the evidence that produced it; nothing is invented.
  */
 import type { RecommendationItem } from "./recommend.ts";
-import type { Catalog } from "./types.ts";
+import type { Catalog, DishStyle } from "./types.ts";
+
+export const STYLE_LABELS: Record<DishStyle, string> = {
+  comfort: "Comfort food",
+  light_fresh: "Light & fresh",
+  hearty: "Hearty",
+  street_food: "Street food",
+  rich_indulgent: "Rich & indulgent",
+  sharing: "Sharing / party",
+};
+
+const STYLE_PHRASES: Record<string, string> = {
+  comfort: "comfort food",
+  light_fresh: "light, fresh food",
+  hearty: "hearty meals",
+  street_food: "street food",
+  rich_indulgent: "rich food",
+  sharing: "sharing dishes",
+};
+
+export function cuisineName(c: string): string {
+  return c.charAt(0).toUpperCase() + c.slice(1);
+}
+
+/** "method:fried" → "fried food", "style:comfort" → "comfort food", "cuisine:filipino" → "Filipino food". */
+export function recentPhrase(attr: string): string {
+  const [kind, slug = ""] = attr.split(":");
+  if (kind === "style") return STYLE_PHRASES[slug] ?? slug.replaceAll("_", " ");
+  if (kind === "cuisine") return `${cuisineName(slug)} food`;
+  return `${attributeWord(attr)} food`;
+}
+
+/** Adjective qualities share one "food" ("fried, crispy food"); styles/cuisines stay noun phrases. */
+export function varietyPhrase(attrs: string[]): string {
+  const adjectives = attrs.filter((a) => !a.startsWith("style:") && !a.startsWith("cuisine:")).map(attributeWord);
+  const nouns = attrs.filter((a) => a.startsWith("style:") || a.startsWith("cuisine:")).map(recentPhrase);
+  const parts = [...(adjectives.length ? [`${adjectives.join(", ")} food`] : []), ...nouns];
+  return joinAnd(parts);
+}
+
+function joinAnd(xs: string[]): string {
+  return xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`;
+}
 
 const ATTRIBUTE_WORDS: Record<string, string> = {
   "texture:brothy": "brothy",
@@ -47,7 +89,7 @@ export interface Explanation {
   text: string;
 }
 
-export function explainItem(item: RecommendationItem, catalog: Catalog): Explanation[] {
+export function explainItem(item: RecommendationItem, catalog: Catalog, source: "reactions" | "quick_picks" = "reactions"): Explanation[] {
   const out: Explanation[] = [];
   for (const code of item.reasonCodes) {
     switch (code) {
@@ -68,13 +110,20 @@ export function explainItem(item: RecommendationItem, catalog: Catalog): Explana
         out.push({ code, text: "Matches food preferences you've set." });
         break;
       case "RECENT_FOOD_VARIETY":
-        out.push({ code, text: "A change from the meals you've confirmed this week." });
+        if (item.evidence.varietyFrom.length > 0) {
+          out.push({ code, text: `A change from the ${varietyPhrase(item.evidence.varietyFrom)} you've had recently.` });
+        } else {
+          out.push({ code, text: "A change from the meals you've confirmed this week." });
+        }
         break;
       case "NOVELTY_EXPLORATION":
         out.push({ code, text: "Something different from what you've logged before." });
         break;
       case "INSUFFICIENT_EVIDENCE":
-        out.push({ code, text: "Early pick — based on only a few reactions so far." });
+        out.push({
+          code,
+          text: source === "quick_picks" ? "Based only on your recent meals — swipe to refine." : "Early pick — based on only a few reactions so far.",
+        });
         break;
       case "FULFILLMENT_UNVERIFIED":
         out.push({ code, text: "Where to get it hasn't been checked." });

@@ -15,6 +15,7 @@ import {
   effectiveCardCount,
   explainItem,
   getPolicy,
+  quickPicks,
   readiness,
   recommend,
   recordReaction,
@@ -27,25 +28,29 @@ import {
   type RestrictionKey,
   type SafetyAssessment,
 } from "@/engine";
+import { startCloudBackup } from "@/lib/cloud-backup";
 import { exposureRecords, rotatePolicy, runRecord, type CardTrace } from "@/lib/evaluation";
 import {
   addMeal,
   appendEvalEvent,
   getAssignmentSetting,
+  getProfile,
   getRestrictions,
   listEvalSessions,
   listMeals,
+  setProfile,
   setRestrictions,
   upsertEvalSession,
   type EvalSessionRecord,
   type RecommendationRunRecord,
 } from "@/lib/local-store";
 import { DishArt } from "./DishArt";
-import { DishDetails, RESTRICTION_LABELS, SafetyNote, cuisineLabel } from "./DishInfo";
+import { DishDetails, DishLabel, RESTRICTION_LABELS, SafetyNote } from "./DishInfo";
+import { RecentMealsStep } from "./RecentMealsStep";
 import { Sheet } from "./Sheet";
 import { SwipeCard } from "./SwipeCard";
 
-type Phase = "home" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
+type Phase = "home" | "recent-meals" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
 
 interface OutcomeContext {
   sessionId: string;
@@ -67,7 +72,7 @@ function depsFor(policyId: string): EngineDeps {
   return {
     catalog,
     policy: getPolicy(policyId),
-    user: { stableAttributeWeights: {}, confirmedMeals: listMeals(), noveltyPreference: 0.5 },
+    user: { stableAttributeWeights: {}, confirmedMeals: listMeals(), noveltyPreference: 0.5, varietySeeking: getProfile().varietySeeking },
     now: nowIso(),
   };
 }
@@ -108,6 +113,8 @@ export function DiscoveryApp() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRestrictionState(getRestrictions());
     setPending(pendingOutcome());
+    startCloudBackup();
+    void navigator.storage?.persist?.().catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -201,10 +208,24 @@ export function DiscoveryApp() {
     setAssignment(asg);
     setExhaustedNotice(false);
     setLeaving(null);
+    setProfile({ recentMealsAskedAt: nowIso() });
+    if (policy.quickPicks) {
+      const run = quickPicks(s, depsFor(policyId));
+      if (run.items.length > 0) {
+        runTriggers.current = ["quick_picks"];
+        setSession(s);
+        setTraces({});
+        setRuns([run]);
+        persist(s, {}, [run], asg);
+        setPhase("results");
+        setAnnounce("Here are some fresh ideas based on your recent meals.");
+        return;
+      }
+    }
     setPhase("discover");
     advance(s, {}, [], asg);
     setAnnounce("Discovery started.");
-  }, [advance, restrictions]);
+  }, [advance, persist, restrictions]);
 
   const react = useCallback(
     (value: ReactionValue) => {
@@ -348,7 +369,7 @@ export function DiscoveryApp() {
           <Home
             restrictions={restrictions}
             pending={pending}
-            onStart={start}
+            onStart={() => setPhase("recent-meals")}
             onRestrictions={() => setRestrictionsOpen(true)}
             onPendingAte={(ctx) => confirmMeal(ctx, ctx.dishId, null)}
             onPendingOther={(ctx) => {
@@ -361,6 +382,8 @@ export function DiscoveryApp() {
             }}
           />
         )}
+
+        {phase === "recent-meals" && <RecentMealsStep onContinue={start} onBack={goHome} />}
 
         {phase === "discover" && session && (
           <section className="flex flex-1 flex-col" aria-label="Food cards">
@@ -585,9 +608,14 @@ function Home(props: {
 
       <footer className="flex items-center justify-between border-t border-line pt-3 text-xs text-muted">
         <span>Dish info is general — not verified for any recipe or restaurant.</span>
-        <Link href="/lab" className="ml-3 shrink-0 font-semibold underline underline-offset-2">
-          Lab
-        </Link>
+        <span className="ml-3 flex shrink-0 gap-3">
+          <Link href="/data" className="font-semibold underline underline-offset-2">
+            Your data
+          </Link>
+          <Link href="/lab" className="font-semibold underline underline-offset-2">
+            Lab
+          </Link>
+        </span>
       </footer>
     </section>
   );
@@ -604,12 +632,15 @@ function Results(props: {
 }) {
   const run = props.run;
   const noMatch = !run || run.noMatch;
-  const heading = noMatch ? "No strong match yet" : run.kind === "ready" ? "Here's what sounds good" : "A few early ideas";
+  const quick = run?.source === "quick_picks";
+  const heading = noMatch ? "No strong match yet" : quick ? "Fresh ideas for today" : run.kind === "ready" ? "Here's what sounds good" : "A few early ideas";
   const sub = noMatch
     ? "Nothing stood out from your reactions so far. That's fine — try a few more dishes."
-    : run.kind === "ready"
-      ? `Based on your ${run.effectiveCards} reactions this session.`
-      : `Based on only ${run.effectiveCards} reaction${run.effectiveCards === 1 ? "" : "s"} — more cards will sharpen these.`;
+    : quick
+      ? "A change from what you've eaten recently. Not feeling these? Swipe a few dishes and we'll learn what you're in the mood for."
+      : run.kind === "ready"
+        ? `Based on your ${run.effectiveCards} reactions this session.`
+        : `Based on only ${run.effectiveCards} reaction${run.effectiveCards === 1 ? "" : "s"} — more cards will sharpen these.`;
   return (
     <section className="flex flex-1 flex-col" aria-labelledby="results-title" data-testid="results">
       <h1 id="results-title" className="mt-4 font-display text-[2.1rem] font-semibold leading-tight">
@@ -628,7 +659,7 @@ function Results(props: {
           {run.items.map((item) => {
             const d = catalog.byId.get(item.dishId);
             if (!d) return null;
-            const reasons = explainItem(item, catalog).filter((r) => r.code !== "FULFILLMENT_UNVERIFIED");
+            const reasons = explainItem(item, catalog, run.source).filter((r) => r.code !== "FULFILLMENT_UNVERIFIED");
             return (
               <li key={item.dishId} className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line" data-testid="recommendation">
                 <div className="flex gap-4 p-4">
@@ -637,7 +668,8 @@ function Results(props: {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="font-display text-xl font-semibold leading-tight">{d.name}</h2>
-                    <p className="text-sm text-muted">{cuisineLabel(d.cuisine)} · {d.tags.join(", ")}</p>
+                    <DishLabel dish={d} />
+                    <p className="text-sm text-muted">{d.tags.join(", ")}</p>
                     <ul className="mt-2 space-y-1 text-[14px] leading-snug">
                       {reasons.map((r) => (
                         <li key={r.code} className="flex gap-1.5">
@@ -667,7 +699,7 @@ function Results(props: {
       <div className="mt-6 space-y-2 pb-4">
         {!props.exhausted && (
           <button type="button" onClick={() => props.onKeepDiscovering(!noMatch)} className="h-12 w-full rounded-full bg-surface font-semibold ring-1 ring-line">
-            {noMatch ? "Keep discovering" : "None of these — keep discovering"}
+            {noMatch ? "Keep discovering" : quick ? "Swipe to refine" : "None of these — keep discovering"}
           </button>
         )}
         {props.onUndo && (

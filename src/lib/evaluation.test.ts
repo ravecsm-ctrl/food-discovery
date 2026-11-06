@@ -46,7 +46,7 @@ describe("ENG-018 evaluation records", () => {
     expect(base.sessions).toBe(1);
     expect(adapt.sessions).toBe(1);
     expect(base.yesRate).toBe(0.5);
-    expect(sum.find((x) => x.policyId === "adaptive-exposure-v1")!.sessions).toBe(0);
+    expect(sum.find((x) => x.policyId === "adaptive-v2")!.sessions).toBe(0);
   });
 
   it("missing ratings are absent, not negative", () => {
@@ -70,7 +70,7 @@ describe("ENG-018 evaluation records", () => {
     expect(csv).not.toMatch(/shellfish|peanut|allerg/i);
   });
 
-  it("rotation spreads sessions across all three policies", () => {
-    expect([0, 1, 2, 3].map(rotatePolicy)).toEqual(["baseline-fixed-v0", "adaptive-v1", "adaptive-exposure-v1", "baseline-fixed-v0"]);
+  it("rotation alternates between the active comparison arms", () => {
+    expect([0, 1, 2, 3].map(rotatePolicy)).toEqual(["baseline-fixed-v2", "adaptive-v2", "baseline-fixed-v2", "adaptive-v2"]);
   });
 });

@@ -5,6 +5,7 @@
  *   P stable preference, C current appetite, X soft context, N novelty, R exposure adjustment.
  * Scores are NOT probabilities and must never be shown as percentages.
  */
+import { dishFatigue, fatigueAdjustment, recentLoad } from "./fatigue.ts";
 import { clamp, dishSimilarity } from "./similarity.ts";
 import type { PolicyConfig } from "./policy.ts";
 import type { Catalog, ConfirmedMeal, Dish, Reaction, UserModel } from "./types.ts";
@@ -17,7 +18,7 @@ export interface ScoreBreakdown {
   currentEvidence: number;
   softContext: number;
   novelty: number;
-  /** Raw exposure E (0..cap) and resulting adjustment R (≤ 0). */
+  /** Raw exposure E (0..cap) — or taste fatigue F (0..1) under fatigue v2 — and resulting adjustment R (≤ 0). */
   exposure: number;
   exposureAdjustment: number;
   utility: number;
@@ -152,7 +153,12 @@ export function scoreDish(dish: Dish, inputs: ScoringInputs): ScoreBreakdown {
   const { value: current, evidence: currentEvidence, supportingLikes } = currentAppetite(dish.id, inputs);
   const softContext = weightAlignment(inputs.softAttributeWeights, dish);
   const novelty = noveltyScore(dish.id, inputs);
-  const { exposure, adjustment } = exposureAdjustment(dish.id, inputs);
+  let { exposure, adjustment } = exposureAdjustment(dish.id, inputs);
+  if (inputs.policy.fatigue.enabled) {
+    const recent = recentLoad(inputs.catalog, inputs.user.confirmedMeals, inputs.now, inputs.policy.fatigue);
+    exposure = dishFatigue(dish, recent, inputs.policy.fatigue);
+    adjustment = fatigueAdjustment(exposure, recent, inputs.policy.fatigue, current, inputs.user.varietySeeking ?? 1);
+  }
   const utility = clamp(w.stable * stable + w.current * current + w.softContext * softContext + w.novelty * novelty + adjustment, -1, 1);
   return { dishId: dish.id, stable, current, currentEvidence, softContext, novelty, exposure, exposureAdjustment: adjustment, utility, supportingLikes };
 }

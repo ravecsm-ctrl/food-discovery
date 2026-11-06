@@ -118,7 +118,7 @@ function simulate(policyId: string, p: Persona): Metrics {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const pct = (n: number, d: number) => (d ? `${Math.round((100 * n) / d)}%` : "—");
-const POLICY_IDS = ["baseline-fixed-v0", "adaptive-v0", "adaptive-v1", "adaptive-exposure-v1"];
+const POLICY_IDS = ["baseline-fixed-v0", "adaptive-v1", "adaptive-exposure-v1", "baseline-fixed-v2", "adaptive-v2"];
 
 const lines: string[] = [];
 const out = (s = "") => {

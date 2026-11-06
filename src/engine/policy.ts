@@ -1,3 +1,5 @@
+import { FATIGUE_V2, type FatigueConfig } from "./fatigue.ts";
+
 /**
  * Versioned, configurable recommendation policies (ENG-005, ETD §8).
  *
@@ -24,6 +26,10 @@ export interface PolicyConfig {
    *   (default; documented deviation D-03 in docs/m1-implementation-notes.md)
    */
   currentAppetite: { normalization: "global" | "kernel"; similarityFloor: number; kernelExponent: number; priorStrength: number };
+  /** Taste fatigue v2 (attribute-level). When enabled it replaces the v0 `exposure` heuristic. */
+  fatigue: FatigueConfig;
+  /** Offer quick picks from recent meals before swiping. */
+  quickPicks: boolean;
   /** ETD §8.5 conservative exposure heuristic. */
   exposure: {
     enabled: boolean;
@@ -130,6 +136,7 @@ const EXPOSURE_ON: PolicyConfig["exposure"] = {
 };
 
 const EXPOSURE_OFF: PolicyConfig["exposure"] = { ...EXPOSURE_ON, enabled: false };
+const FATIGUE_OFF: FatigueConfig = { ...FATIGUE_V2, enabled: false };
 
 /** ETD §8.8 taken literally. Kept for comparison; see D-05 for why it under-adapts. */
 const ETD_LITERAL = { termNormalization: "affine", informationProxy: "uncertainty" } as const;
@@ -143,6 +150,8 @@ export const POLICIES: Record<string, PolicyConfig> = {
     experimentArm: "A/B (fixed curated sequence; shortlist ranked from reactions)",
     cardSelection: "fixed",
     exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_OFF,
+    quickPicks: false,
     ...shared(NORMALIZED),
   },
   "adaptive-v0": {
@@ -151,6 +160,8 @@ export const POLICIES: Record<string, PolicyConfig> = {
     experimentArm: "C (adaptive card selection, ETD §8.8 literal)",
     cardSelection: "adaptive",
     exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_OFF,
+    quickPicks: false,
     ...shared(ETD_LITERAL),
   },
   "adaptive-v1": {
@@ -159,6 +170,8 @@ export const POLICIES: Record<string, PolicyConfig> = {
     experimentArm: "C (adaptive card selection)",
     cardSelection: "adaptive",
     exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_OFF,
+    quickPicks: false,
     ...shared(NORMALIZED),
   },
   "adaptive-exposure-v1": {
@@ -167,12 +180,34 @@ export const POLICIES: Record<string, PolicyConfig> = {
     experimentArm: "D (adds conservative recent-food exposure)",
     cardSelection: "adaptive",
     exposure: EXPOSURE_ON,
+    fatigue: FATIGUE_OFF,
+    quickPicks: false,
+    ...shared(NORMALIZED),
+  },
+  "baseline-fixed-v2": {
+    id: "baseline-fixed-v2",
+    label: "Baseline + taste fatigue — fixed diverse sequence",
+    experimentArm: "A/B with taste fatigue v2 and quick picks",
+    cardSelection: "fixed",
+    exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_V2,
+    quickPicks: true,
+    ...shared(NORMALIZED),
+  },
+  "adaptive-v2": {
+    id: "adaptive-v2",
+    label: "Adaptive + taste fatigue — next card responds to reactions",
+    experimentArm: "C/D with taste fatigue v2 and quick picks",
+    cardSelection: "adaptive",
+    exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_V2,
+    quickPicks: true,
     ...shared(NORMALIZED),
   },
 };
 
 /** Policies used for new sessions under rotation (the comparison arms). */
-export const ACTIVE_POLICY_IDS = ["baseline-fixed-v0", "adaptive-v1", "adaptive-exposure-v1"];
+export const ACTIVE_POLICY_IDS = ["baseline-fixed-v2", "adaptive-v2"];
 
 export const POLICY_IDS = Object.keys(POLICIES);
 

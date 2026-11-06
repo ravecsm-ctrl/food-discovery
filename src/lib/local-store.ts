@@ -1,6 +1,7 @@
 /**
- * Local-only prototype persistence (ENG-018, R-014, R-031).
- * Everything stays in this browser's localStorage/sessionStorage. Nothing is sent anywhere.
+ * On-device persistence (ENG-018, R-014, R-031, R-015).
+ * Data lives in this browser's localStorage. The only thing that ever leaves the device is the
+ * optional one-way backup to the person's own private GitHub repo (see cloud-backup.ts).
  * All access is wrapped so private mode / blocked storage degrades to in-memory behavior.
  */
 import type { ConfirmedMeal, ReasonCode, RestrictionKey } from "@/engine";
@@ -10,7 +11,30 @@ const KEYS = {
   meals: "fd.meals.v1",
   assignment: "fd.eval.assignment.v1",
   restrictions: "fd.restrictions.session.v1",
+  profile: "fd.profile.v1",
 } as const;
+
+/** Keys whose content is part of the personal backup (never the cloud token, never restrictions). */
+const BACKED_UP = new Set<string>([KEYS.sessions, KEYS.meals, KEYS.assignment, KEYS.profile]);
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+let muted = false;
+/** Called after any change to backed-up data (used to schedule the cloud backup). */
+export function onDataChange(fn: Listener): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+function changed(key: string) {
+  if (muted || !BACKED_UP.has(key)) return;
+  for (const fn of listeners) {
+    try {
+      fn();
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 function read<T>(storage: () => Storage, key: string, fallback: T): T {
   try {
@@ -27,6 +51,7 @@ function write(storage: () => Storage, key: string, value: unknown): void {
   } catch {
     /* storage unavailable — prototype continues in memory */
   }
+  changed(key);
 }
 
 const local = () => window.localStorage;
@@ -49,7 +74,7 @@ export interface ExposureRecord {
 
 export interface RecommendationRunRecord {
   at: string;
-  trigger: "user_request" | "readiness_prompt" | "round_end" | "exhausted";
+  trigger: "quick_picks" | "user_request" | "readiness_prompt" | "round_end" | "exhausted";
   kind: "tentative" | "ready";
   effectiveCards: number;
   eligibleCount: number;
@@ -137,9 +162,58 @@ export function setRestrictions(keys: RestrictionKey[]): void {
   write(session, KEYS.restrictions, keys);
 }
 
+/* ---------------- taste profile ---------------- */
+
+export interface Profile {
+  /** 0.5 routine · 1 normal · 1.5 gets bored quickly (taste-fatigue strength). */
+  varietySeeking: number;
+  /** When the recent-meals question was last answered or skipped. */
+  recentMealsAskedAt?: string;
+}
+
+export function getProfile(): Profile {
+  return { varietySeeking: 1, ...read<Partial<Profile>>(local, KEYS.profile, {}) };
+}
+
+export function setProfile(patch: Partial<Profile>): void {
+  write(local, KEYS.profile, { ...getProfile(), ...patch });
+}
+
+/* ---------------- backup snapshot ---------------- */
+
+export interface BackupData {
+  sessions: EvalSessionRecord[];
+  meals: ConfirmedMeal[];
+  assignment: AssignmentSetting;
+  profile: Profile;
+}
+
+export function snapshot(): BackupData {
+  return { sessions: listEvalSessions(), meals: listMeals(), assignment: getAssignmentSetting(), profile: getProfile() };
+}
+
+/** Replace all backed-up data (restore). Does not trigger a new backup by itself. */
+export function replaceAll(data: BackupData): void {
+  muted = true;
+  try {
+    write(local, KEYS.sessions, data.sessions);
+    write(local, KEYS.meals, data.meals);
+    write(local, KEYS.assignment, data.assignment);
+    write(local, KEYS.profile, data.profile);
+  } finally {
+    muted = false;
+  }
+}
+
+export function hasLocalData(): boolean {
+  return listEvalSessions().length > 0 || listMeals().length > 0;
+}
+
 /* ---------------- maintenance ---------------- */
 
+/** Clears data on this device. Callers must disconnect cloud backup first so an empty copy never overwrites it. */
 export function clearAllLocalData(): void {
+  muted = true;
   try {
     for (const k of Object.values(KEYS)) {
       window.localStorage.removeItem(k);
@@ -147,5 +221,7 @@ export function clearAllLocalData(): void {
     }
   } catch {
     /* ignore */
+  } finally {
+    muted = false;
   }
 }

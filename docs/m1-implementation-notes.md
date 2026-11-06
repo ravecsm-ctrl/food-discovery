@@ -64,3 +64,36 @@ fulfillment/restaurant/delivery links, payments, forecast, AI calls, History/Me 
 - **I-06 Restrictions storage.** Avoided ingredients are kept in `sessionStorage` (this tab only) and never written to evaluation records. Confirmed meals and evaluation records are in `localStorage` on this device only, with a "Clear all" button in the Lab. There is no consent flow because nothing leaves the device. Revisit in M2.
 - **I-07 Dev-only audit warnings.** `npm audit` reports 0 production vulnerabilities and 8 moderate ones in dev tooling (minimatch via ESLint 9). They were left as-is: `--force` would install breaking major versions.
 - **I-08 ESLint 9.39.5** is marked end-of-life by npm. It was chosen because `eslint-plugin-react` does not yet declare ESLint 10 support. Upgrade when the Next.js ESLint config supports v10.
+
+---
+
+## 5. Update: memory, taste fatigue and labels (authorized by product owner, 2026-11-06)
+
+Scope: you asked for five things, and this update delivers all of them. Steps 1–2 bring forward part of M2 (persistent personal records and meal logging) without Supabase or accounts. The cuisine filter chips are deliberately postponed until the catalog grows.
+
+| # | Capability | Implementation | Tests |
+|---|---|---|---|
+| 1 | Save data like padel-os | Data stays on the phone (`localStorage`, with persistent storage requested). Optional automatic one-way backup to the person's **private** GitHub repo, as one JSON file with every version kept, plus restore, keep-this-phone-or-restore choice on connect, file export/import, and the `/data` page | `backup-format.test.ts`; e2e with a simulated GitHub: refuses public repos, never saves the token, restores |
+| 2 | "Your last 3 meals" opener | Optional step after "Start discovering": search a dish or type free text, pick a rough time ("Last night" …). Meals already logged in the last 3 days are shown, so you only add new ones. Removing a meal = correction | e2e: add 3 meals, skip, free-text meal |
+| 3 | Taste fatigue v2 | `src/engine/fatigue.ts` (D-09) | `fatigue.test.ts` (13 tests) |
+| 4 | Quick picks | Up to 3 fresh, diverse ideas from recent meals before any swiping (D-10); "Swipe to refine" continues into adaptive cards | unit + e2e |
+| 5 | Cuisine + style labels | Card / results / details show "Filipino · Comfort food". Style is one of 6 editorial labels (D-08) | unit (schema) + e2e |
+
+### Deviations / design decisions
+- **D-08 Style labels.** The catalog (v0.2) adds a required `style` field: comfort, light_fresh, hearty, street_food, rich_indulgent or sharing. These are editorial judgments and need review, like the rest of the catalog. They are also features the fatigue model uses. Older policies ignore them, because their similarity weights don't include `style`.
+- **D-09 Taste fatigue v2** replaces the ETD §8.5 similarity heuristic for the new policies:
+  - **Load per attribute:** fatigue is tracked per quality (flavor, texture, method, main ingredient, style, cuisine, structure). Each confirmed meal adds a load that halves about every 24 h, inside a 4-day window.
+  - **Staples ignored:** rice, vegetables, "rice meal" and "savory" never drive fatigue.
+  - **Dish fatigue:** the weighted share of a dish's qualities that you ate recently.
+  - **Penalty:** 0.15 × fatigue × coverage × variety-seeking × (1 − tonight's positive appetite). Coverage = number of meals ÷ 3, capped at 1. Tonight's "yes" therefore beats history (PRRD §10.4).
+  - **Card order:** dishes eaten in the window go to the back of the queue in *both* card policies, and adaptive cold-start cards avoid heavily fatigued dishes. "I like routine" turns this reordering off.
+  - **Status:** a provisional model grounded in sensory-specific-satiety research. It is not validated for individuals.
+- **D-10 Quick picks** recommend without any swipe evidence. That is allowed by PRRD §10.3 (early tentative results), but they are always labelled "Based only on your recent meals — swipe to refine". They require at least one recognized recent meal, so free-text-only history yields no picks rather than ungrounded ones.
+- **D-11 Persistence approach.** Instead of the ETD's Supabase/auth design, this uses on-device storage plus an optional backup to a private GitHub repo you own, the same approach as padel-os. That fits one or two people on their own phones. It is **not** the multi-user P0 architecture, and M2/M3 for couples on separate devices would still need a server.
+- **Policies:** new sessions rotate between `baseline-fixed-v2` and `adaptive-v2`. Both use fatigue v2 and quick picks, so only card selection differs between the arms. Older policies stay available in the Lab, and older records stay readable.
+
+### Open issues added
+- **I-09 Simulation can't judge fatigue.** The synthetic personas have no taste fatigue of their own, so for a "fried lover who ate fried all week" the fatigue policy *looks* worse: top-5 hit rate drops, and the no-match rate is 13%. Whether fatigue helps can only be learned from real meals and ratings. The Lab records both.
+- **I-10 Restrictions on the Home Screen app.** Dietary restrictions are still kept per browser tab, so the installed app forgets them on each launch. Remembering them on the phone, while still keeping them out of backups, is a small follow-up, but it is a privacy decision for you to make.
+- **I-11 One extra tap before the first card.** The recent-meals step adds a tap before the first card. It is optional ("Skip — start swiping"), so PRRD §5.2 is still met.
+- **I-12 Rough meal times.** Recalled meal times are approximate ("Last night" = 7:30 pm yesterday) and flagged `timeApprox`.

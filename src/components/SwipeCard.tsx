@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import type { Dish, ReactionValue, SafetyAssessment } from "@/engine";
 import { DishArt } from "./DishArt";
-import { SafetyNote } from "./DishInfo";
+import { DishLabel, SafetyNote } from "./DishInfo";
 
 const THRESHOLD = 110;
 
@@ -88,7 +88,10 @@ export function SwipeCard({
       </div>
       <div className="space-y-2.5 p-5">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="font-display text-[1.75rem] font-semibold leading-tight">{dish.name}</h2>
+          <div className="min-w-0">
+            <DishLabel dish={dish} className="mb-0.5" />
+            <h2 className="font-display text-[1.75rem] font-semibold leading-tight">{dish.name}</h2>
+          </div>
           <button
             type="button"
             onClick={onDetails}

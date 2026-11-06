@@ -3,9 +3,10 @@
  * Both policies draw from the SAME eligible candidate set (ALG-018).
  */
 import { buildCandidates } from "./eligibility.ts";
+import { dishFatigue, recentLoad } from "./fatigue.ts";
 import type { PolicyConfig } from "./policy.ts";
 import { tieBreak } from "./rng.ts";
-import { scoreDish, type ScoringInputs } from "./scoring.ts";
+import { recentConfirmedMeals, scoreDish, type ScoringInputs } from "./scoring.ts";
 import { activeReactions, shownDishIds, type DiscoverySession } from "./session.ts";
 import { dishSimilarity } from "./similarity.ts";
 import type { Catalog, Dish, UserModel } from "./types.ts";
@@ -74,9 +75,18 @@ export function selectNextCard(session: DiscoverySession, deps: EngineDeps): Car
   const unseen = eligible.filter((d) => !shown.has(d.id));
   if (unseen.length === 0) return null;
 
+  // Taste fatigue v2: dishes confirmed eaten in the window go to the back of the queue in BOTH card
+  // policies (not excluded — a repeat may still be wanted), keeping the arms comparable.
+  // People who set "I like routine" (varietySeeking ≤ 0.5) keep normal card order; only the scoring penalty applies.
+  const fatigueOn = deps.policy.fatigue.enabled && (deps.user.varietySeeking ?? 1) > 0.5;
+  const eatenRecently = fatigueOn
+    ? new Set(recentConfirmedMeals(deps.user.confirmedMeals, deps.now, deps.policy.fatigue.windowDays).map((m) => m.dishId))
+    : new Set<string | null>();
+  const fresh = unseen.filter((d) => !eatenRecently.has(d.id));
+
   if (deps.policy.cardSelection === "fixed") {
     const order = baselineSequence(eligible, deps, session.seed);
-    const next = order.find((id) => !shown.has(id)) as string;
+    const next = (order.find((id) => !shown.has(id) && !eatenRecently.has(id)) ?? order.find((id) => !shown.has(id))) as string;
     return { dishId: next, reason: "fixed_sequence", q: null };
   }
 
@@ -84,14 +94,20 @@ export function selectNextCard(session: DiscoverySession, deps: EngineDeps): Car
   const cfg = deps.policy.nextCard;
 
   if (nReacted < cfg.coldStartCards) {
-    const recognizable = unseen.filter((d) => d.recognizability >= cfg.coldStartMinRecognizability);
-    const pool = recognizable.length > 0 ? recognizable : unseen;
+    let base = fresh.length > 0 ? fresh : unseen;
+    if (fatigueOn) {
+      const load = recentLoad(deps.catalog, deps.user.confirmedMeals, deps.now, deps.policy.fatigue);
+      const notTired = base.filter((d) => dishFatigue(d, load, deps.policy.fatigue) <= 0.5);
+      if (notTired.length > 0) base = notTired;
+    }
+    const recognizable = base.filter((d) => d.recognizability >= cfg.coldStartMinRecognizability);
+    const pool = recognizable.length > 0 ? recognizable : base;
     const best = argmax(pool, (d) => [r9(1 - maxSimilarityTo(d.id, shown, deps)), d.recognizability, tieBreak(session.seed, d.id)]);
     return { dishId: best.id, reason: "cold_start_variety", q: null };
   }
 
   const inputs = scoringInputs(session, deps);
-  const raw = unseen.map((d) => {
+  const raw = (fresh.length > 0 ? fresh : unseen).map((d) => {
     const s = scoreDish(d, inputs);
     const uncertainty = 1 - Math.abs(s.current);
     return {

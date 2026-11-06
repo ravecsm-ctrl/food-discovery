@@ -4,6 +4,7 @@ export * from "./policy.ts";
 export * from "./similarity.ts";
 export * from "./eligibility.ts";
 export * from "./scoring.ts";
+export * from "./fatigue.ts";
 export * from "./session.ts";
 export * from "./selection.ts";
 export * from "./recommend.ts";

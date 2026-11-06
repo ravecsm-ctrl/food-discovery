@@ -3,6 +3,7 @@
  * (ENG-014, ENG-015; R-005, R-010, R-013; ETD §8.9, §8.11).
  */
 import { buildCandidates, type EligibilityResult } from "./eligibility.ts";
+import { dishFatigue, recentLoad, varietyEvidence, type RecentLoad } from "./fatigue.ts";
 import { hashString } from "./rng.ts";
 import { recentConfirmedMeals, scoreDish, type ScoreBreakdown } from "./scoring.ts";
 import { scoringInputs, selectNextCard, type EngineDeps } from "./selection.ts";
@@ -22,6 +23,8 @@ export interface RecommendationItem {
   evidence: {
     likedSimilar: Array<{ dishId: string; sharedAttributes: string[] }>;
     recentMealsConsidered: number;
+    /** Recently eaten qualities (e.g. "method:fried", "style:comfort") this dish is a change from. */
+    varietyFrom: string[];
   };
   score: ScoreBreakdown;
 }
@@ -30,6 +33,8 @@ export interface RecommendationRun {
   policyId: string;
   catalogVersion: string;
   kind: "tentative" | "ready";
+  /** "quick_picks" = suggested from recent meals before any swiping. */
+  source: "reactions" | "quick_picks";
   items: RecommendationItem[];
   noMatch: boolean;
   strongMatchAvailable: boolean;
@@ -51,7 +56,8 @@ export function inputDigest(session: DiscoverySession, deps: EngineDeps): string
     m: deps.user.confirmedMeals.map((m) => [m.id, m.dishId, m.consumedAt]),
     w: deps.user.stableAttributeWeights,
     n: deps.user.noveltyPreference,
-    t: deps.policy.exposure.enabled ? deps.now : null,
+    v: deps.user.varietySeeking ?? 1,
+    t: deps.policy.exposure.enabled || deps.policy.fatigue.enabled ? deps.now : null,
   });
   return hashString(payload).toString(16).padStart(8, "0");
 }
@@ -62,13 +68,16 @@ function reasonCodesFor(
   deps: EngineDeps,
   recentDishIds: string[],
   tentative: boolean,
+  varietyFrom: string[],
 ): ReasonCode[] {
   const r = deps.policy.reasons;
   const codes: ReasonCode[] = [];
   if (score.current >= r.currentPositiveMin && score.supportingLikes.length > 0) codes.push("CURRENT_SESSION_POSITIVE");
   if (score.stable >= r.stableMatchMin) codes.push("STABLE_PREFERENCE_MATCH");
   if (deps.policy.utilityWeights.novelty * score.novelty >= r.noveltyMin) codes.push("NOVELTY_EXPLORATION");
-  if (deps.policy.exposure.enabled && recentDishIds.length > 0) {
+  if (deps.policy.fatigue.enabled) {
+    if (varietyFrom.length > 0) codes.push("RECENT_FOOD_VARIETY");
+  } else if (deps.policy.exposure.enabled && recentDishIds.length > 0) {
     let maxSim = 0;
     for (const id of recentDishIds) maxSim = Math.max(maxSim, dishSimilarity(deps.catalog, score.dishId, id, deps.policy.similarityKindWeights));
     if (maxSim <= r.varietyMaxSimilarityToRecent) codes.push("RECENT_FOOD_VARIETY");
@@ -113,24 +122,29 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
   const tentative = effective < deps.policy.reasons.minReactionsForEvidence || !strongMatchAvailable;
   const recent = deps.policy.exposure.enabled
     ? recentConfirmedMeals(deps.user.confirmedMeals, deps.now, deps.policy.exposure.windowDays)
-    : [];
+    : deps.policy.fatigue.enabled
+      ? recentConfirmedMeals(deps.user.confirmedMeals, deps.now, deps.policy.fatigue.windowDays)
+      : [];
+  const load = deps.policy.fatigue.enabled ? recentLoad(deps.catalog, deps.user.confirmedMeals, deps.now, deps.policy.fatigue) : null;
   const recentDishIds = recent.map((m) => m.dishId).filter((x): x is string => !!x && deps.catalog.byId.has(x));
 
   const items: RecommendationItem[] = picked.map(({ dish, score }, i) => {
     const eligibility = candidates.byId.get(dish.id) as EligibilityResult;
+    const varietyFrom = freshVarietyFrom(dish, load, deps);
     return {
       rank: i + 1,
       dishId: dish.id,
       appealScore: Math.round(score.utility * 1000) / 1000,
       fulfillmentStatus: eligibility.fulfillment,
       safety: eligibility.safety,
-      reasonCodes: reasonCodesFor(score, eligibility, deps, recentDishIds, tentative),
+      reasonCodes: reasonCodesFor(score, eligibility, deps, recentDishIds, tentative, varietyFrom),
       evidence: {
         likedSimilar: score.supportingLikes.slice(0, 2).map((s) => ({
           dishId: s.dishId,
           sharedAttributes: sharedAttributes(dish, deps.catalog.byId.get(s.dishId) as Dish),
         })),
         recentMealsConsidered: recent.length,
+        varietyFrom,
       },
       score,
     };
@@ -144,6 +158,7 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
     policyId: deps.policy.id,
     catalogVersion: deps.catalog.catalogVersion,
     kind: tentative ? "tentative" : "ready",
+    source: "reactions",
     items,
     noMatch: items.length === 0,
     strongMatchAvailable,
@@ -153,6 +168,84 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
     inputDigest: inputDigest(session, deps),
     eligibleCount: candidates.eligible.length,
   };
+}
+
+/** Variety evidence only for dishes that are genuinely a fresh change (low fatigue). */
+function freshVarietyFrom(dish: Dish, load: RecentLoad | null, deps: EngineDeps): string[] {
+  if (!load || load.mealsInWindow === 0) return [];
+  if (dishFatigue(dish, load, deps.policy.fatigue) > deps.policy.fatigue.freshMax) return [];
+  return varietyEvidence(dish, load, deps.policy.fatigue);
+}
+
+/**
+ * Quick picks (D-10): up to 3 suggestions from recent confirmed meals alone, before any swiping.
+ * Ranked by freshness (1 − fatigue) and recognizability, kept diverse, and always labelled tentative.
+ * Returns an explicit no-match when there are no recent meals (nothing to base picks on).
+ */
+export function quickPicks(session: DiscoverySession, deps: EngineDeps): RecommendationRun {
+  const cfg = deps.policy.fatigue;
+  const candidates = buildCandidates(deps.catalog, session.constraints);
+  const load = recentLoad(deps.catalog, deps.user.confirmedMeals, deps.now, cfg);
+  const recent = recentConfirmedMeals(deps.user.confirmedMeals, deps.now, cfg.windowDays);
+  const eatenRecently = new Set(recent.map((m) => m.dishId).filter((x): x is string => !!x));
+  const inputs = scoringInputs(session, deps);
+  const runReasonCodes: ReasonCode[] = ["INSUFFICIENT_EVIDENCE"];
+  if (candidates.excluded.length > 0) runReasonCodes.unshift("HARD_CONSTRAINT_EXCLUDED");
+  const base = {
+    policyId: deps.policy.id,
+    catalogVersion: deps.catalog.catalogVersion,
+    kind: "tentative" as const,
+    source: "quick_picks" as const,
+    strongMatchAvailable: false,
+    effectiveCards: 0,
+    excludedByConstraints: candidates.excluded.length,
+    runReasonCodes,
+    inputDigest: inputDigest(session, deps),
+    eligibleCount: candidates.eligible.length,
+  };
+  // Picks must be grounded in recognized meals; free-text-only history gives no attribute evidence.
+  if (!cfg.enabled || load.load.size === 0) return { ...base, items: [], noMatch: true };
+
+  const ranked = candidates.eligible
+    .filter((d) => !eatenRecently.has(d.id))
+    .map((d) => {
+      const fatigue = dishFatigue(d, load, cfg);
+      return { d, fatigue, pick: 0.65 * (1 - fatigue) + 0.35 * d.recognizability };
+    })
+    .filter((x) => x.fatigue <= cfg.freshMax)
+    .sort((a, b) => b.pick - a.pick || tieBreak(session.seed, b.d.id) - tieBreak(session.seed, a.d.id));
+
+  const picked: typeof ranked = [];
+  for (const pass of [true, false]) {
+    for (const c of ranked) {
+      if (picked.length >= 3) break;
+      if (picked.includes(c)) continue;
+      const tooSimilar = picked.some((p) => dishSimilarity(deps.catalog, p.d.id, c.d.id, deps.policy.similarityKindWeights) >= 0.6);
+      const sameStyle = picked.some((p) => p.d.style === c.d.style);
+      if (tooSimilar || (pass && sameStyle)) continue;
+      picked.push(c);
+    }
+  }
+
+  const items: RecommendationItem[] = picked.map(({ d }, i) => {
+    const eligibility = candidates.byId.get(d.id) as EligibilityResult;
+    const varietyFrom = varietyEvidence(d, load, cfg);
+    const score = scoreDish(d, inputs);
+    const reasonCodes: ReasonCode[] = [];
+    if (varietyFrom.length > 0) reasonCodes.push("RECENT_FOOD_VARIETY");
+    reasonCodes.push("FULFILLMENT_UNVERIFIED", "INSUFFICIENT_EVIDENCE");
+    return {
+      rank: i + 1,
+      dishId: d.id,
+      appealScore: Math.round(score.utility * 1000) / 1000,
+      fulfillmentStatus: eligibility.fulfillment,
+      safety: eligibility.safety,
+      reasonCodes,
+      evidence: { likedSimilar: [], recentMealsConsidered: recent.length, varietyFrom },
+      score,
+    };
+  });
+  return { ...base, items, noMatch: items.length === 0 };
 }
 
 export interface Readiness {

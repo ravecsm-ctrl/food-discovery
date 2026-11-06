@@ -12,6 +12,7 @@ const dishOnCard = (page: Page) => card(page).getAttribute("data-dish-id");
 async function start(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Start discovering" }).click();
+  await page.getByRole("button", { name: "Skip — start swiping" }).click();
   await expect(card(page)).toBeVisible();
 }
 
@@ -48,6 +49,8 @@ test("AT-004: complete keyboard-only flow, and selecting is not eating (AT-020)"
   await page.goto("/");
   const startBtn = page.getByRole("button", { name: "Start discovering" });
   await startBtn.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Skip — start swiping" }).focus();
   await page.keyboard.press("Enter");
   await expect(card(page)).toBeVisible();
   for (let i = 0; i < 10; i++) {
@@ -132,6 +135,7 @@ test("AT-009/AT-010: shellfish avoidance hides confirmed shellfish dishes and ne
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("button", { name: /1 avoided/ })).toBeVisible();
   await page.getByRole("button", { name: "Start discovering" }).click();
+  await page.getByRole("button", { name: "Skip — start swiping" }).click();
   await expect(card(page).getByTestId("safety-note")).toBeVisible();
   await expect(card(page).getByTestId("safety-note")).toContainText(/check before ordering/);
   const seen: string[] = [];
@@ -177,13 +181,16 @@ test("outcome: confirm a different dish, rate it, and see it in the lab", async 
 
 test("R-028: no horizontal page scroll at phone width", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
-  for (const path of ["/", "/lab"]) {
+  for (const path of ["/", "/lab/", "/data/"]) {
     await page.goto(path);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, path).toBeLessThanOrEqual(0);
   }
   await page.goto("/");
   await page.getByRole("button", { name: "Start discovering" }).click();
+  await page.getByRole("button", { name: "Skip — start swiping" }).click();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+  await page.goto("/data/");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });

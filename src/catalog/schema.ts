@@ -3,7 +3,7 @@
  * Invalid records are rejected with path-specific, human-readable errors.
  */
 import { z } from "zod";
-import { ATTRIBUTE_KINDS, RESTRICTION_KEYS } from "../engine/types.ts";
+import { ATTRIBUTE_KINDS, DISH_STYLES, RESTRICTION_KEYS } from "../engine/types.ts";
 import type { Catalog, Dish } from "../engine/types.ts";
 
 const SLUG = /^[a-z][a-z0-9_]*$/;
@@ -28,6 +28,7 @@ export const DishSchema = z
     familyId: z.string().regex(/^[a-z0-9-]+$/).nullable(),
     name: z.string().min(2).max(60),
     cuisine: z.string().regex(SLUG),
+    style: z.enum(DISH_STYLES),
     description: z.string().min(20).max(140),
     tags: z.array(z.string().min(2).max(20)).min(1).max(4),
     richness: unit,
@@ -62,6 +63,7 @@ export const CatalogFileSchema = z
         attributeEvidence: z.enum(["curated", "verified_source", "inferred", "unknown"]),
         reviewStatus: z.string(),
         note: z.string(),
+        styleNote: z.string(),
         media: z.string(),
       })
       .strict(),

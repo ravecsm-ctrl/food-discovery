@@ -17,6 +17,7 @@ export function featureVector(dish: Dish): FeatureVector {
   if (cached) return cached;
   const v = new Map<string, number>(Object.entries(dish.attributes));
   v.set(`cuisine:${dish.cuisine}`, 1);
+  v.set(`style:${dish.style}`, 1);
   v.set("richness:rich", dish.richness);
   v.set("richness:light", 1 - dish.richness);
   vectorCache.set(dish, v);
