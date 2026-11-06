@@ -17,3 +17,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run catalog:validate
       - run: npm run verify
+        env:
+          # Test-only values: the account browser test intercepts every Supabase request with a local
+          # fake (tests/e2e/fake-supabase.ts), so nothing here reaches a real project.
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_test_only_not_a_real_key
