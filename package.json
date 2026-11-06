@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "catalog:validate": "node --experimental-strip-types scripts/validate-catalog.ts",
     "eval:simulate": "node --experimental-strip-types scripts/simulate-policies.ts",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e"
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e",
+    "export": "NEXT_TELEMETRY_DISABLED=1 STATIC_EXPORT=1 next build"
   },
   "dependencies": {
     "next": "16.4.2",

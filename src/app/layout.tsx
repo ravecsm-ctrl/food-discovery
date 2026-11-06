@@ -4,9 +4,17 @@ import "./globals.css";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap" });
 
+const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export const metadata: Metadata = {
   title: "Food Discovery — Prototype",
   description: "Swipe through dishes and get one to three ideas for what to eat. Local intelligence prototype.",
+  manifest: `${base}/manifest.webmanifest`,
+  icons: {
+    icon: [{ url: `${base}/icon.svg`, type: "image/svg+xml" }, { url: `${base}/icon-192.png`, sizes: "192x192" }],
+    apple: [{ url: `${base}/icon-180.png`, sizes: "180x180" }],
+  },
+  appleWebApp: { capable: true, title: "Food Discovery", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
