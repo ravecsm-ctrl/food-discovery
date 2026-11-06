@@ -18,10 +18,11 @@ import {
 } from "@/lib/cloud-backup";
 import { RESTRICTION_LABELS } from "./DishInfo";
 import type { RestrictionKey } from "@/engine";
-import { clearAllLocalData, getProfile, getRestrictions, listMeals, onDataChange, removeMeal, replaceAll, setProfile, setRestrictions, snapshot } from "@/lib/local-store";
+import { clearAllLocalData, getProfile, getRestrictions, listMeals, onDataChange, removeMeal, replaceAll, setProfile, setRestrictions, snapshot, updateMeal } from "@/lib/local-store";
 import { detachBeforeLocalWipe } from "@/lib/cloud-sync";
 import { CloudAccount } from "./CloudAccount";
 import { MealEditor } from "./MealEditor";
+import { unlistedFoods } from "@/lib/dish-search";
 import { relativeWhen } from "@/lib/recent-meals";
 
 const catalog = loadCatalog();
@@ -78,6 +79,7 @@ export function DataPanel() {
     }
   };
 
+  const unlisted = unlistedFoods(catalog, meals);
   const nameOf = (m: ConfirmedMeal) => (m.dishId ? catalog.byId.get(m.dishId)?.name : m.unrecognizedName) ?? "Meal";
 
   return (
@@ -191,6 +193,42 @@ export function DataPanel() {
           }}
         />
       </section>
+
+      {unlisted.length > 0 && (
+        <section className="mt-8" aria-labelledby="unlisted" data-testid="unlisted-foods">
+          <h2 id="unlisted" className="text-lg font-semibold">
+            Not in our dish list yet
+          </h2>
+          <p className="text-sm text-muted">Foods you logged by name. They&apos;re kept privately but can&apos;t shape suggestions until they match a dish.</p>
+          <ul className="mt-2 space-y-1.5">
+            {unlisted.map((u) => (
+              <li key={u.name} className="flex items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 text-sm ring-1 ring-line">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{u.name}</span>
+                  <span className="text-xs text-muted">
+                    {u.mealIds.length} meal{u.mealIds.length === 1 ? "" : "s"}
+                    {u.match ? ` · now in the list as ${u.match.name}` : ""}
+                  </span>
+                </span>
+                {u.match && (
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink"
+                    aria-label={`Link ${u.name} to ${u.match.name}`}
+                    onClick={() => {
+                      for (const id of u.mealIds) updateMeal(id, { dishId: u.match!.id });
+                      refresh();
+                      setMessage({ kind: "ok", text: `Linked ${u.name} to ${u.match!.name}. It now counts toward variety.` });
+                    }}
+                  >
+                    Link
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-8 rounded-3xl bg-surface p-4 ring-1 ring-line" aria-labelledby="cloud" data-testid="cloud-backup">
         <h2 id="cloud" className="text-lg font-semibold">

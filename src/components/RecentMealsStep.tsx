@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { loadCatalog } from "@/catalog";
+import { searchDishes } from "@/lib/dish-search";
 import type { ConfirmedMeal } from "@/engine";
 import { addMeal, listMeals, removeMeal } from "@/lib/local-store";
 import { WHEN_LABELS, recentMeals, relativeWhen, whenToIso, type WhenChoice } from "@/lib/recent-meals";
@@ -26,7 +27,7 @@ export function RecentMealsStep({ onContinue, onBack }: { onContinue: () => void
   const matches = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (t.length < 1) return [];
-    return catalog.dishes.filter((d) => d.name.toLowerCase().includes(t)).slice(0, 6);
+    return searchDishes(catalog, t, 6);
   }, [q]);
 
   const add = (when: WhenChoice) => {

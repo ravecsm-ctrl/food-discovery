@@ -162,3 +162,12 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 - **I-18** "We disagree" records only who wanted the dish, not strength of feeling. Revisit if real use shows people want "only Sam, and Rave really doesn't".
 
 **Live verification (2026-11-07):** migration applied with `supabase db push` after owner approval. With temporary guests: a Together session (shared vote, undone disagreement, joint decision) round-tripped exactly with no names stored and no meal created; another guest could neither overwrite nor see it; the new internal helpers return *permission denied* to signed-in users; test guests deleted.
+
+## 9. Library step 1 — coverage, search, unlisted foods (approved 2026-11-07)
+
+- **catalog-v0.4-draft (225 dishes):** +30 dishes — Middle Eastern (doner kebab, beef kebab plate, shawarma wrap/rice, lamb kofta, falafel, hummus), Greek (chicken gyro), Indian (butter chicken, tikka masala, biryani, rogan josh, palak paneer, dal tadka, chana masala, samosa), Mexican (tacos ×2, quesadilla, burrito, burrito bowl, nachos, enchiladas), Thai (pad kra pao, massaman, pad see ew, red curry with duck, pineapple fried rice, som tam, tom kha gai). Same conservative claim rules; AI-drafted, pending review (I-01).
+- **Alternate names (`aliases`, search only)** on 135 dishes: local names, shorthand and spellings (tapsi, samgyup, yang chow, xlb, kebab/döner, shawarma…). Never shown as facts.
+- **Shared dish search** (`src/lib/dish-search.ts`) used by every food picker: name, alternate names and cuisine, any word or word start, one-typo tolerance for longer words, ranked by match quality then familiarity.
+- **"Not in our dish list yet"** (Your data): free-text meals grouped by name — the evidence for what to add next (and for whether AI categorization is worth building, see plan step 4). When a dish now exists for a name (exact name/alternate name), a **Link** button re-links those meals after the person taps it, so they start counting toward variety. Nothing changes automatically; the records stay private (PRRD §9.4).
+- Cuisine labels for multi-word cuisines display properly ("Middle Eastern").
+- Supabase reference data: `20261107000400_reference_catalog_v0_4_draft.sql` (v0.3 marked retired).

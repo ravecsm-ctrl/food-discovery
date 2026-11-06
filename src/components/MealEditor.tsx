@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { loadCatalog } from "@/catalog";
+import { searchDishes } from "@/lib/dish-search";
 import type { ConfirmedMeal } from "@/engine";
 import { updateMeal } from "@/lib/local-store";
 import { Sheet } from "./Sheet";
@@ -34,7 +35,7 @@ function Editor({ meal, onClose, onSaved }: { meal: ConfirmedMeal; onClose: () =
   const matches = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t || (dishId && catalog.byId.get(dishId)?.name.toLowerCase() === t)) return [];
-    return catalog.dishes.filter((d) => d.name.toLowerCase().includes(t)).slice(0, 5);
+    return searchDishes(catalog, t, 5);
   }, [q, dishId]);
 
   const save = () => {

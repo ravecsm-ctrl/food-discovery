@@ -23,8 +23,12 @@ const STYLE_PHRASES: Record<string, string> = {
   sharing: "sharing dishes",
 };
 
+/** "middle_eastern" → "Middle Eastern". */
 export function cuisineName(c: string): string {
-  return c.charAt(0).toUpperCase() + c.slice(1);
+  return c
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 /** "method:fried" → "fried food", "style:comfort" → "comfort food", "cuisine:filipino" → "Filipino food". */

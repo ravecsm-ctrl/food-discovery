@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadCatalog } from "@/catalog";
+import { searchDishes } from "@/lib/dish-search";
 import {
   DEFAULT_CONSTRAINTS,
   RESTRICTION_KEYS,
@@ -917,7 +918,7 @@ function Picked(props: {
 
 function OtherMeal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (dishId: string | null, name: string | null) => void }) {
   const [q, setQ] = useState("");
-  const matches = catalog.dishes.filter((d) => d.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 8);
+  const matches = searchDishes(catalog, q, 8);
   return (
     <section className="flex flex-1 flex-col pt-4">
       <h1 className="font-display text-3xl font-semibold">What did you eat?</h1>

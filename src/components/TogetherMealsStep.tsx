@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { loadCatalog } from "@/catalog";
+import { searchDishes } from "@/lib/dish-search";
 import type { ParticipantNames, TogetherMeal } from "@/engine";
 import { WHEN_LABELS, relativeWhen, whenToIso, type WhenChoice } from "@/lib/recent-meals";
 import { DishArt } from "./DishArt";
@@ -23,7 +24,7 @@ export function TogetherMealsStep(props: { names: ParticipantNames; onContinue: 
   const matches = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return [];
-    return catalog.dishes.filter((d) => d.name.toLowerCase().includes(t)).slice(0, 6);
+    return searchDishes(catalog, t, 6);
   }, [q]);
 
   const whoLabel = (w: TogetherMeal["who"]) => (w === "both" ? "Both of you" : names[w]);

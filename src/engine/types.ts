@@ -59,6 +59,8 @@ export interface Dish {
   style: DishStyle;
   description: string;
   tags: string[];
+  /** Other names people search by (search only). */
+  aliases?: string[];
   /** 0 = light, 1 = very rich. Editorial estimate. */
   richness: number;
   /** 0–1 editorial estimate of local (PH) recognizability; used only for cold-start card choice. */
