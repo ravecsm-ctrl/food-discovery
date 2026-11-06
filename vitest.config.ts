@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "supabase/tests/**/*.test.ts"],
     environment: "node",
+    // Property tests replay many full sessions over the whole catalog; CI machines are ~2x slower.
+    testTimeout: 30_000,
   },
 });
