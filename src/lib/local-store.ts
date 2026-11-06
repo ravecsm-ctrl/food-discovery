@@ -10,7 +10,10 @@ const KEYS = {
   sessions: "fd.eval.sessions.v1",
   meals: "fd.meals.v1",
   assignment: "fd.eval.assignment.v1",
-  restrictions: "fd.restrictions.session.v1",
+  /** Remembered on this device only (owner decision 2026-11-06). Never backed up or exported. */
+  restrictions: "fd.restrictions.device.v1",
+  /** Previous per-tab key, read once for migration. */
+  restrictionsLegacy: "fd.restrictions.session.v1",
   profile: "fd.profile.v1",
 } as const;
 
@@ -152,14 +155,21 @@ export function setAssignmentSetting(v: AssignmentSetting): void {
   write(local, KEYS.assignment, v);
 }
 
-/* ---------------- dietary avoidances: this browser tab only ---------------- */
+/* ---------------- dietary avoidances: remembered on this device, never backed up ---------------- */
 
 export function getRestrictions(): RestrictionKey[] {
-  return read<RestrictionKey[]>(session, KEYS.restrictions, []);
+  const saved = read<RestrictionKey[] | null>(local, KEYS.restrictions, null);
+  if (saved) return saved;
+  return read<RestrictionKey[]>(session, KEYS.restrictionsLegacy, []);
 }
 
 export function setRestrictions(keys: RestrictionKey[]): void {
-  write(session, KEYS.restrictions, keys);
+  write(local, KEYS.restrictions, keys);
+  try {
+    window.sessionStorage.removeItem(KEYS.restrictionsLegacy);
+  } catch {
+    /* ignore */
+  }
 }
 
 /* ---------------- taste profile ---------------- */

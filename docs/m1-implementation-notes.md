@@ -94,6 +94,6 @@ Scope: you asked for five things, and this update delivers all of them. Steps 1�
 
 ### Open issues added
 - **I-09 Simulation can't judge fatigue.** The synthetic personas have no taste fatigue of their own, so for a "fried lover who ate fried all week" the fatigue policy *looks* worse: top-5 hit rate drops, and the no-match rate is 13%. Whether fatigue helps can only be learned from real meals and ratings. The Lab records both.
-- **I-10 Restrictions on the Home Screen app.** Dietary restrictions are still kept per browser tab, so the installed app forgets them on each launch. Remembering them on the phone, while still keeping them out of backups, is a small follow-up, but it is a privacy decision for you to make.
+- **I-10 (resolved 2026-11-06, owner decision).** Dietary restrictions are now remembered on the phone (`localStorage`). They are never included in the GitHub backup, backup files or evaluation exports, so after a restore on a new phone you set them again. "Your data" shows them and offers a "Forget" button.
 - **I-11 One extra tap before the first card.** The recent-meals step adds a tap before the first card. It is optional ("Skip — start swiping"), so PRRD §5.2 is still met.
 - **I-12 Rough meal times.** Recalled meal times are approximate ("Last night" = 7:30 pm yesterday) and flagged `timeApprox`.

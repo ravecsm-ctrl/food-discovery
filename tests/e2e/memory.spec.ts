@@ -129,3 +129,30 @@ test("GitHub backup: connects to a private repo, saves without the token, and re
   await page.getByRole("button", { name: "Restore from GitHub" }).click();
   await expect(page.getByText("Meals you've logged (1)")).toBeVisible();
 });
+
+test("dietary restrictions are remembered on the phone but never backed up", async ({ page }) => {
+  const gh = await fakeGitHub(page, { private: true });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Dietary restrictions/ }).click();
+  await page.getByRole("checkbox", { name: /Peanut/ }).check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: /1 avoided/ })).toBeVisible();
+
+  await page.goto("/data/");
+  await expect(page.getByTestId("restrictions-summary")).toContainText("Avoiding: peanut");
+  await page.getByLabel("Repository").fill("someone/food-data");
+  await page.getByLabel("Access token").fill("test-token-not-real");
+  await page.getByRole("button", { name: "Connect backup" }).click();
+  await expect(page.getByText("Backup connected.")).toBeVisible();
+  const saved = Buffer.from(String(gh.content), "base64").toString("utf8");
+  expect(saved).not.toMatch(/peanut|restriction/i);
+
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download backup file" }).click()]);
+  const fs = await import("node:fs/promises");
+  const fileText = await fs.readFile((await download.path())!, "utf8");
+  expect(fileText).not.toMatch(/peanut|restriction/i);
+
+  await page.getByRole("button", { name: "Forget restrictions on this phone" }).click();
+  await expect(page.getByTestId("restrictions-summary")).toContainText("None set");
+});

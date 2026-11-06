@@ -845,7 +845,7 @@ function RestrictionsSheet(props: { open: boolean; value: RestrictionKey[]; onCl
           </label>
         ))}
       </fieldset>
-      <p className="mt-3 text-xs text-muted">Kept only in this browser tab and not included in evaluation exports. Applies to new discovery sessions.</p>
+      <p className="mt-3 text-xs text-muted">Remembered on this phone only — never included in GitHub backups, backup files or evaluation exports. Applies to new discovery sessions.</p>
       <button type="button" onClick={() => props.onSave(draft)} className="mt-4 h-12 w-full rounded-full bg-accent font-semibold text-accent-ink">
         Save
       </button>

@@ -16,7 +16,9 @@ import {
   startCloudBackup,
   type CloudStatus,
 } from "@/lib/cloud-backup";
-import { clearAllLocalData, getProfile, listMeals, removeMeal, replaceAll, setProfile, snapshot } from "@/lib/local-store";
+import { RESTRICTION_LABELS } from "./DishInfo";
+import type { RestrictionKey } from "@/engine";
+import { clearAllLocalData, getProfile, getRestrictions, listMeals, removeMeal, replaceAll, setProfile, setRestrictions, snapshot } from "@/lib/local-store";
 import { relativeWhen } from "@/lib/recent-meals";
 
 const catalog = loadCatalog();
@@ -36,6 +38,7 @@ export function DataPanel() {
   const [status, setStatus] = useState<CloudStatus>({ on: false });
   const [meals, setMeals] = useState<ConfirmedMeal[]>([]);
   const [variety, setVariety] = useState(1);
+  const [restrictions, setRestrictionState] = useState<RestrictionKey[]>([]);
   const [token, setToken] = useState("");
   const [repo, setRepo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,6 +49,7 @@ export function DataPanel() {
     setStatus(cloudStatus());
     setMeals(listMeals().sort((a, b) => b.consumedAt.localeCompare(a.consumedAt)));
     setVariety(getProfile().varietySeeking);
+    setRestrictionState(getRestrictions());
   };
   useEffect(() => {
     startCloudBackup();
@@ -106,6 +110,30 @@ export function DataPanel() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="mt-8" aria-labelledby="restr" data-testid="restrictions-summary">
+        <h2 id="restr" className="text-lg font-semibold">
+          Dietary restrictions
+        </h2>
+        <p className="text-sm text-muted">
+          {restrictions.length === 0
+            ? "None set. You can add them from the home screen."
+            : `Avoiding: ${restrictions.map((k) => (RESTRICTION_LABELS[k].split(" (")[0] ?? k).toLowerCase()).join(", ")}.`}{" "}
+          Remembered on this phone only — never backed up or exported.
+        </p>
+        {restrictions.length > 0 && (
+          <button
+            type="button"
+            className="mt-2 rounded-full bg-surface px-4 py-2 text-sm font-semibold ring-1 ring-line"
+            onClick={() => {
+              setRestrictions([]);
+              refresh();
+            }}
+          >
+            Forget restrictions on this phone
+          </button>
+        )}
       </section>
 
       <section className="mt-8" aria-labelledby="meals">
