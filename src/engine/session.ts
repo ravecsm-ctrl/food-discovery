@@ -1,0 +1,133 @@
+/**
+ * Pure, immutable solo-session state (ENG-016/ENG-017, R-007, ETD §4.4).
+ * Every transition returns a new object; nothing here touches the browser or clock directly.
+ */
+import type { CardExposure, ReactionStrength, ReactionValue, Reaction, SessionConstraints } from "./types.ts";
+
+export interface DiscoverySession {
+  sessionId: string;
+  seed: number;
+  policyId: string;
+  catalogVersion: string;
+  constraints: SessionConstraints;
+  startedAt: string;
+  exposures: CardExposure[];
+  reactions: Reaction[];
+  /** Effective-card count at which the current discovery round ends (ETD §8.9). */
+  roundEndsAt: number;
+  rounds: number;
+  /** Monotonic counter for action-group ids. */
+  actionCounter: number;
+}
+
+export function createSession(args: {
+  sessionId: string;
+  seed: number;
+  policyId: string;
+  catalogVersion: string;
+  constraints: SessionConstraints;
+  now: string;
+  initialBudget: number;
+}): DiscoverySession {
+  return {
+    sessionId: args.sessionId,
+    seed: args.seed,
+    policyId: args.policyId,
+    catalogVersion: args.catalogVersion,
+    constraints: args.constraints,
+    startedAt: args.now,
+    exposures: [],
+    reactions: [],
+    roundEndsAt: args.initialBudget,
+    rounds: 1,
+    actionCounter: 0,
+  };
+}
+
+export function activeReactions(s: DiscoverySession): Reaction[] {
+  return s.reactions.filter((r) => r.active);
+}
+
+/** The card awaiting a reaction, if any. */
+export function currentExposure(s: DiscoverySession): CardExposure | null {
+  const reacted = new Set(activeReactions(s).map((r) => r.exposureId));
+  for (let i = s.exposures.length - 1; i >= 0; i--) {
+    const e = s.exposures[i] as CardExposure;
+    if (!e.withdrawn && !reacted.has(e.exposureId)) return e;
+  }
+  return null;
+}
+
+/** Dishes currently counted as shown (withdrawn cards are not). */
+export function shownDishIds(s: DiscoverySession): Set<string> {
+  return new Set(s.exposures.filter((e) => !e.withdrawn).map((e) => e.dishId));
+}
+
+export function effectiveCardCount(s: DiscoverySession): number {
+  return activeReactions(s).length;
+}
+
+export function addExposure(s: DiscoverySession, dishId: string, now: string, selectionProbability = 1): DiscoverySession {
+  if (currentExposure(s)) throw new Error("A card is already awaiting a reaction");
+  if (shownDishIds(s).has(dishId)) throw new Error(`Dish ${dishId} was already shown in this session`);
+  const position = s.exposures.length + 1;
+  const exposure: CardExposure = {
+    exposureId: `${s.sessionId}:x${position}`,
+    dishId,
+    position,
+    shownAt: now,
+    withdrawn: false,
+    selectionProbability,
+  };
+  return { ...s, exposures: [...s.exposures, exposure] };
+}
+
+export function recordReaction(
+  s: DiscoverySession,
+  value: ReactionValue,
+  now: string,
+  strength: ReactionStrength = "ordinary",
+): DiscoverySession {
+  const exposure = currentExposure(s);
+  if (!exposure) throw new Error("No card is awaiting a reaction");
+  const n = s.actionCounter + 1;
+  const reaction: Reaction = {
+    reactionId: `${s.sessionId}:r${n}`,
+    actionGroupId: `${s.sessionId}:g${n}`,
+    exposureId: exposure.exposureId,
+    dishId: exposure.dishId,
+    value,
+    strength,
+    active: true,
+    recordedAt: now,
+    invalidatedAt: null,
+  };
+  return { ...s, reactions: [...s.reactions, reaction], actionCounter: n };
+}
+
+export function canUndo(s: DiscoverySession): boolean {
+  return s.reactions.some((r) => r.active);
+}
+
+/**
+ * Undo the latest logical reaction: invalidate every reaction in its action group,
+ * withdraw the card shown after it, and make the reacted card current again.
+ * Invalidated evidence stays in the log for evaluation but has no ranking effect.
+ */
+export function undoLastReaction(s: DiscoverySession, now: string): DiscoverySession {
+  const last = [...s.reactions].reverse().find((r) => r.active);
+  if (!last) return s;
+  const pending = currentExposure(s);
+  return {
+    ...s,
+    reactions: s.reactions.map((r) =>
+      r.actionGroupId === last.actionGroupId && r.active ? { ...r, active: false, invalidatedAt: now } : r,
+    ),
+    exposures: s.exposures.map((e) => (pending && e.exposureId === pending.exposureId ? { ...e, withdrawn: true } : e)),
+  };
+}
+
+/** Start another discovery round after results (users may always continue). */
+export function continueDiscovery(s: DiscoverySession, extraBudget: number): DiscoverySession {
+  return { ...s, roundEndsAt: effectiveCardCount(s) + extraBudget, rounds: s.rounds + 1 };
+}
