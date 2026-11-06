@@ -160,3 +160,5 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 **Deviations / open issues**
 - **D-17** Together Mode ignores taste fatigue and recent meals (privacy on a shared screen). A future option: an optional, session-only "what have you two eaten recently?" question.
 - **I-18** "We disagree" records only who wanted the dish, not strength of feeling. Revisit if real use shows people want "only Sam, and Rave really doesn't".
+
+**Live verification (2026-11-07):** migration applied with `supabase db push` after owner approval. With temporary guests: a Together session (shared vote, undone disagreement, joint decision) round-tripped exactly with no names stored and no meal created; another guest could neither overwrite nor see it; the new internal helpers return *permission denied* to signed-in users; test guests deleted.
