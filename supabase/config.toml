@@ -4,7 +4,7 @@ project_id = "food-discovery"
 
 [api]
 enabled = true
-schemas = ["public"]
+schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
@@ -32,13 +32,14 @@ token_verifications = 30
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations = false
+enable_confirmations = true
 secure_password_change = true
 max_frequency = "60s"
 # 6-digit codes typed into the app (links don't reach the home-screen app on iPhone).
 otp_length = 6
 otp_expiry = 3600
 
+# 6-digit code emails. On the free plan these require the custom SMTP sender (Gmail, set in the dashboard).
 [auth.email.template.magic_link]
 subject = "Your Food Discovery sign-in code"
 content_path = "./supabase/templates/magic_link.html"
