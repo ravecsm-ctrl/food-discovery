@@ -49,22 +49,44 @@ function maxSimilarityTo(dishId: string, others: Iterable<string>, deps: EngineD
  * Fixed baseline sequence: greedy max-min diversity over eligible dishes, starting from the most
  * recognizable one. Independent of reactions — identical for every session with the same seed/constraints.
  */
+const sequenceCache = new WeakMap<Catalog, Map<string, string[]>>();
+
 export function baselineSequence(eligible: readonly Dish[], deps: EngineDeps, seed: number): string[] {
+  // Pure function of (catalog, eligible set, seed, similarity weights) — memoized so each swipe is O(1).
+  let byKey = sequenceCache.get(deps.catalog);
+  if (!byKey) {
+    byKey = new Map();
+    sequenceCache.set(deps.catalog, byKey);
+  }
+  const key = `${seed}|${JSON.stringify(deps.policy.similarityKindWeights)}|${eligible.map((d) => d.id).join(",")}`;
+  const hit = byKey.get(key);
+  if (hit) return hit;
+
+  // Greedy max-min diversity. maxSim[i] = max similarity of remaining[i] to anything already ordered,
+  // updated incrementally with only the newest pick (O(n²) instead of O(n³); identical result).
   const remaining = [...eligible];
+  const maxSim = remaining.map(() => 0);
   const order: string[] = [];
   while (remaining.length > 0) {
     let bestIdx = 0;
     let bestKey: [number, number, number] = [-Infinity, -Infinity, -Infinity];
     remaining.forEach((d, i) => {
-      const spread = order.length === 0 ? 1 : 1 - maxSimilarityTo(d.id, order, deps);
-      const key: [number, number, number] = [r9(spread), d.recognizability, tieBreak(seed, d.id)];
-      if (key[0] > bestKey[0] || (key[0] === bestKey[0] && (key[1] > bestKey[1] || (key[1] === bestKey[1] && key[2] > bestKey[2])))) {
-        bestKey = key;
+      const spread = order.length === 0 ? 1 : 1 - (maxSim[i] as number);
+      const k: [number, number, number] = [r9(spread), d.recognizability, tieBreak(seed, d.id)];
+      if (k[0] > bestKey[0] || (k[0] === bestKey[0] && (k[1] > bestKey[1] || (k[1] === bestKey[1] && k[2] > bestKey[2])))) {
+        bestKey = k;
         bestIdx = i;
       }
     });
-    order.push((remaining.splice(bestIdx, 1)[0] as Dish).id);
+    const picked = (remaining.splice(bestIdx, 1)[0] as Dish).id;
+    maxSim.splice(bestIdx, 1);
+    order.push(picked);
+    remaining.forEach((d, i) => {
+      maxSim[i] = Math.max(maxSim[i] as number, dishSimilarity(deps.catalog, d.id, picked, deps.policy.similarityKindWeights));
+    });
   }
+  if (byKey.size > 50) byKey.clear();
+  byKey.set(key, order);
   return order;
 }
 

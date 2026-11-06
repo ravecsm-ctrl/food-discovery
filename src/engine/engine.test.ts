@@ -336,7 +336,7 @@ describe("ENG-012/013 card policies (ALG-011, ALG-018, R-004, R-014)", () => {
   });
 
   it("never repeats a dish within a session and exhausts cleanly", () => {
-    const { shown, session } = runPolicy(newSession(), deps(), 100, () => "no");
+    const { shown, session } = runPolicy(newSession(), deps(), catalog.dishes.length, () => "no");
     expect(new Set(shown).size).toBe(shown.length);
     expect(shown.length).toBe(catalog.dishes.length);
     expect(selectNextCard(session, deps())).toBeNull();
@@ -345,13 +345,13 @@ describe("ENG-012/013 card policies (ALG-011, ALG-018, R-004, R-014)", () => {
 
   it("ALG-018: baseline and adaptive draw from the same eligible set", () => {
     const constraints = { avoidedIngredients: ["beef" as const] };
-    const a = runPolicy(newSession("adaptive-v1", 5, constraints), deps("adaptive-v1"), 100, () => "yes").shown;
-    const b = runPolicy(newSession("baseline-fixed-v0", 5, constraints), deps("baseline-fixed-v0"), 100, () => "yes").shown;
+    const a = runPolicy(newSession("adaptive-v1", 5, constraints), deps("adaptive-v1"), catalog.dishes.length, () => "yes").shown;
+    const b = runPolicy(newSession("baseline-fixed-v0", 5, constraints), deps("baseline-fixed-v0"), catalog.dishes.length, () => "yes").shown;
     expect(new Set(a)).toEqual(new Set(b));
   });
 
   it("changing the seed never changes eligibility", () => {
-    const sets = [1, 2, 3].map((seed) => new Set(runPolicy(newSession("adaptive-v0", seed, { avoidedIngredients: ["fish"] }), deps(), 100, () => "no").shown));
+    const sets = [1, 2, 3].map((seed) => new Set(runPolicy(newSession("adaptive-v0", seed, { avoidedIngredients: ["fish"] }), deps(), catalog.dishes.length, () => "no").shown));
     expect(sets[0]).toEqual(sets[1]);
     expect(sets[1]).toEqual(sets[2]);
   });
@@ -369,12 +369,16 @@ describe("ENG-014 shortlist (ALG-012/013, AT-007/008, R-005, R-010)", () => {
     }
   });
 
-  it("ALG-012: one strong candidate → one recommendation, not three invented matches", () => {
+  it("ALG-012: one strong candidate → not three invented matches (only genuinely close dishes may join it)", () => {
     let s = newSession();
     s = reactTo(s, "dish-mushroom-risotto", "yes");
     for (const id of ["dish-pork-tonkatsu", "dish-chicken-pho", "dish-beef-bulgogi", "dish-tteokbokki", "dish-pad-thai", "dish-margherita-pizza", "dish-kimchi-jjigae", "dish-salmon-nigiri"]) s = reactTo(s, id, "no");
     const run = recommend(s, deps());
-    expect(run.items.map((i) => i.dishId)).toEqual(["dish-mushroom-risotto"]);
+    const ids = run.items.map((i) => i.dishId);
+    expect(ids[0]).toBe("dish-mushroom-risotto");
+    expect(ids.length).toBeLessThan(3);
+    // Catalog v0.3 adds Truffle Cream Pasta (creamy, earthy, mushroom) — a grounded neighbour, not padding.
+    for (const id of ids.slice(1)) expect(dishSimilarity(catalog, "dish-mushroom-risotto", id, deps().policy.similarityKindWeights)).toBeGreaterThanOrEqual(0.5);
   });
 
   it("ALG-013: everything rejected → explicit no-match, further discovery still possible", () => {

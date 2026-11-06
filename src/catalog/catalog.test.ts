@@ -24,10 +24,10 @@ function clone<T>(x: T): T {
 }
 
 describe("catalog (ENG-004, ENG-006, R-026)", () => {
-  it("bundled catalog passes validation with 40–60 variants", () => {
+  it("bundled catalog passes validation (40–250 variants)", () => {
     const c = loadCatalog();
     expect(c.dishes.length).toBeGreaterThanOrEqual(40);
-    expect(c.dishes.length).toBeLessThanOrEqual(60);
+    expect(c.dishes.length).toBeLessThanOrEqual(250);
   });
 
   it("covers every required cuisine group", () => {

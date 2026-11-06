@@ -166,7 +166,7 @@ describe("card selection with recent meals", () => {
 
   it("recently eaten dishes still appear once fresher options run out", async () => {
     const { runPolicy } = await import("./test-helpers.ts");
-    const { shown } = runPolicy(newSession("adaptive-v2"), deps("adaptive-v2", user(FRIED_WEEK)), 100, () => "no");
+    const { shown } = runPolicy(newSession("adaptive-v2"), deps("adaptive-v2", user(FRIED_WEEK)), catalog.dishes.length, () => "no");
     expect(shown).toContain("dish-lechon-kawali");
     expect(shown.length).toBe(catalog.dishes.length);
   });
@@ -176,9 +176,9 @@ describe("routine-lovers", () => {
   it("'I like routine' keeps recently eaten dishes in normal card order", async () => {
     const { runPolicy } = await import("./test-helpers.ts");
     const meals = [meal("m1", "dish-lechon-kawali", 14)];
-    const normal = runPolicy(newSession("baseline-fixed-v2"), deps("baseline-fixed-v2", user(meals, 1)), 55, () => "no").shown;
-    const routine = runPolicy(newSession("baseline-fixed-v2"), deps("baseline-fixed-v2", user(meals, 0.5)), 55, () => "no").shown;
-    const plain = runPolicy(newSession("baseline-fixed-v2"), deps("baseline-fixed-v2"), 55, () => "no").shown;
+    const normal = runPolicy(newSession("baseline-fixed-v2"), deps("baseline-fixed-v2", user(meals, 1)), catalog.dishes.length, () => "no").shown;
+    const routine = runPolicy(newSession("baseline-fixed-v2"), deps("baseline-fixed-v2", user(meals, 0.5)), catalog.dishes.length, () => "no").shown;
+    const plain = runPolicy(newSession("baseline-fixed-v2"), deps("baseline-fixed-v2"), catalog.dishes.length, () => "no").shown;
     expect(routine).toEqual(plain);
     expect(normal.indexOf("dish-lechon-kawali")).toBeGreaterThan(plain.indexOf("dish-lechon-kawali"));
   });

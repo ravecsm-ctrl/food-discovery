@@ -11,7 +11,7 @@ Scope: ETD ENG-001 … ENG-019 (local solo intelligence prototype). Governing do
 | 003 | Domain/contract boundaries | Done | ESLint `no-restricted-imports/globals/properties` on `src/engine`, `src/catalog`; boundary unit test |
 | 004 | Catalog format + validators | Done | `src/catalog/schema.ts`; 8 negative validation tests; `npm run catalog:validate` |
 | 005 | Policy config + seeded RNG | Done | `src/engine/policy.ts`, `src/engine/rng.ts`; ALG-011 determinism tests |
-| 006 | Initial fixture dataset | Done (draft, pending human review) | 55 variants, all ETD §10.1 fixtures present |
+| 006 | Initial fixture dataset | Done (draft, pending human review) | 195 variants (catalog-v0.3-draft, see §6), all ETD §10.1 fixtures present |
 | 007 | Test workflow + CI checks | Done locally; CI file inactive until pushed to GitHub | `.github/workflows/ci.yml`, `npm run verify` |
 | 008 | Food vectors + similarity | Done | symmetry/bounds/neighbour fixtures |
 | 009 | Hard eligibility | Done | ALG-009/010/016, property test across policies/seeds, e2e shellfish test |
@@ -56,7 +56,7 @@ fulfillment/restaurant/delivery links, payments, forecast, AI calls, History/Me 
 
 ## 4. Open issues for product/engineering decision
 
-- **I-01 Catalog review.** The 55 dishes, their attributes and ingredient claims are drafts written by the engineering agent, not human-reviewed (`reviewStatus: pending_human_review`). They need culinary and Filipino-context review before any user test. TD-007 rights verification applies if photos are added.
+- **I-01 Catalog review.** The 195 dishes (55 original + 140 added in §6), their attributes and ingredient claims are drafts written by the engineering agent, not human-reviewed (`reviewStatus: pending_human_review`). They need culinary and Filipino-context review before any user test. TD-007 rights verification applies if photos are added.
 - **I-02 No real photography.** Cards use labelled emoji-on-gradient illustrations. PRRD K-19 notes images affect swipe data, so consistent rights-cleared photography is needed before meaningful preference evaluation.
 - **I-03 Exposure magnitude.** The ETD cap of 0.12 assumes U spans −1..1. Without stable preferences, U spans only about ±0.45, so the cap reorders shortlists strongly: in the simulation, fried dishes in a fried-lover's shortlist fell from 33% to 5% after a fried-heavy week. This needs a product decision before arm D is evaluated with people. The ETD parameters are unchanged.
 - **I-04 Top-5 hit trade-off.** `adaptive-v1` raises card relevance and shortlist match, but for some personas its top-5 hit rate is below the baseline's (e.g. Spice seeker 75% vs 95%), because the baseline sweeps more of the catalog. The weights are tunable (TD-008) but should be tuned on real sessions, not synthetic ones.
@@ -97,3 +97,11 @@ Scope: you asked for five things, and this update delivers all of them. Steps 1�
 - **I-10 (resolved 2026-11-06, owner decision).** Dietary restrictions are now remembered on the phone (`localStorage`). They are never included in the GitHub backup, backup files or evaluation exports, so after a restore on a new phone you set them again. "Your data" shows them and offers a "Forget" button.
 - **I-11 One extra tap before the first card.** The recent-meals step adds a tap before the first card. It is optional ("Skip — start swiping"), so PRRD §5.2 is still met.
 - **I-12 Rough meal times.** Recalled meal times are approximate ("Last night" = 7:30 pm yesterday) and flagged `timeApprox`.
+
+## 6. Update: catalog expansion to 195 dishes (requested by product owner, 2026-11-07)
+
+- **catalog-v0.3-draft** adds 140 dishes from the owner's cuisine list: Filipino (Manam-style plus silogs, crunchy sisig, fried liempo, adobo variants), Italian (incl. common Philippine pizza-chain styles such as four cheese, gambas, meat lover's, Hawaiian), Chinese (incl. American-Chinese quick-service staples: orange chicken, chow mein, fried rice), Japanese, Korean, Western/continental (incl. burgers and panini/sandwiches) and Vietnamese.
+- New cuisine label `western`. Restaurant menus were used only as inspiration for *which generic dishes* to include; dish names are generic, and no brand names, menu text or photos were copied.
+- Same conservative claim rules as v0.2: `confirmed_present` only for a dish-defining ingredient; everything else `possible`; no absence claims. Squid, octopus and oyster-sauce dishes list `shellfish` as `possible`. All labels are AI-drafted and `pending_human_review` (I-01).
+- **Performance fix (no behavior change):** the fixed-baseline sequence was recomputed O(n³) on every swipe (~700 ms/card on a laptop at 195 dishes). It is now built incrementally (O(n²)) and memoized per catalog/eligible-set/seed (~2 ms/card). Verified identical to the previous order for several seeds and constraint sets.
+- Tests: session-exhaustion tests now use the catalog size instead of a hard-coded 55/100; ALG-012 now allows a second item only when it is genuinely close (similarity ≥ 0.5) to the single liked dish — with v0.3, Truffle Cream Pasta legitimately joins Mushroom Risotto. The 3-item cap and no-padding rule are unchanged.
