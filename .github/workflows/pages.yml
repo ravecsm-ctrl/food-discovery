@@ -30,6 +30,11 @@ jobs:
       - run: npm test
       - name: Build static site
         # Project sites live under /<repo>; a <user>.github.io repo lives at the root.
+        # Supabase URL + publishable key are public by design (repository variables, not secrets).
+        # When unset, the app builds without the cloud account feature.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           REPO="${{ github.event.repository.name }}"
           if [[ "$REPO" == *.github.io ]]; then export BASE_PATH=""; else export BASE_PATH="/$REPO"; fi

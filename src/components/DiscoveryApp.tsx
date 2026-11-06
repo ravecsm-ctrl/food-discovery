@@ -29,6 +29,7 @@ import {
   type SafetyAssessment,
 } from "@/engine";
 import { startCloudBackup } from "@/lib/cloud-backup";
+import { startCloudSync } from "@/lib/cloud-sync";
 import { exposureRecords, rotatePolicy, runRecord, type CardTrace } from "@/lib/evaluation";
 import {
   addMeal,
@@ -114,6 +115,7 @@ export function DiscoveryApp() {
     setRestrictionState(getRestrictions());
     setPending(pendingOutcome());
     startCloudBackup();
+    startCloudSync();
     void navigator.storage?.persist?.().catch(() => undefined);
   }, []);
 

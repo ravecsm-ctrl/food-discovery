@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { loadCatalog } from "@/catalog";
 import { POLICIES, POLICY_IDS, type ConfirmedMeal } from "@/engine";
+import { detachBeforeLocalWipe } from "@/lib/cloud-sync";
 import { disconnect } from "@/lib/cloud-backup";
 import { summarize, toCsv } from "@/lib/evaluation";
 import {
@@ -244,9 +245,10 @@ export function LabPanel() {
         <button
           type="button"
           className="rounded-full bg-no px-4 py-2 text-sm font-semibold text-white"
-          onClick={() => {
-            if (window.confirm("Delete all prototype sessions, meals, and settings stored in this browser? This cannot be undone.")) {
+          onClick={async () => {
+            if (window.confirm("Delete all prototype sessions, meals, and settings stored in this browser? This cannot be undone. A guest cloud copy is deleted too; an email account's cloud copy is kept.")) {
               disconnect(); // never let an empty phone overwrite the GitHub backup
+              await detachBeforeLocalWipe(); // never let an empty phone sync deletions to the cloud
               clearAllLocalData();
               refresh();
             }

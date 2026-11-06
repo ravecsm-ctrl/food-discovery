@@ -1,0 +1,56 @@
+# Supabase project settings for Food Discovery (M2). Applied to the hosted project with
+# `supabase config push` only after the product owner approves; see docs/m2-supabase-setup.md.
+project_id = "food-discovery"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+major_version = 17
+
+[auth]
+enabled = true
+# The installed app (GitHub Pages) and local development.
+site_url = "https://ravecsm-ctrl.github.io/food-discovery/"
+additional_redirect_urls = ["http://localhost:3000", "http://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# Guests are anonymous users until they add an email (ETD §5.2, R-020).
+enable_anonymous_sign_ins = true
+enable_signup = true
+enable_manual_linking = false
+
+[auth.rate_limit]
+email_sent = 4
+anonymous_users = 20
+token_verifications = 30
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+secure_password_change = true
+max_frequency = "60s"
+# 6-digit codes typed into the app (links don't reach the home-screen app on iPhone).
+otp_length = 6
+otp_expiry = 3600
+
+[auth.email.template.magic_link]
+subject = "Your Food Discovery sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your email for Food Discovery"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.sms]
+enable_signup = false
+
+[auth.external.apple]
+enabled = false
+[auth.external.google]
+enabled = false

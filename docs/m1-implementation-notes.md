@@ -105,3 +105,31 @@ Scope: you asked for five things, and this update delivers all of them. Steps 1�
 - Same conservative claim rules as v0.2: `confirmed_present` only for a dish-defining ingredient; everything else `possible`; no absence claims. Squid, octopus and oyster-sauce dishes list `shellfish` as `possible`. All labels are AI-drafted and `pending_human_review` (I-01).
 - **Performance fix (no behavior change):** the fixed-baseline sequence was recomputed O(n³) on every swipe (~700 ms/card on a laptop at 195 dishes). It is now built incrementally (O(n²)) and memoized per catalog/eligible-set/seed (~2 ms/card). Verified identical to the previous order for several seeds and constraint sets.
 - Tests: session-exhaustion tests now use the catalog size instead of a hard-coded 55/100; ALG-012 now allows a second item only when it is genuinely close (similarity ≥ 0.5) to the single liked dish — with v0.3, Truffle Cream Pasta legitimately joins Mushroom Risotto. The 3-item cap and no-padding rule are unchanged.
+
+## 7. M2 — Persistence, Accounts and Memory with Supabase (approved by product owner, 2026-11-07)
+
+**Gate:** the M1 real-use check (ENG-019, ETD §9.5 gate 12) was **waived by the product owner** ("we don't necessarily need 2 weeks to test it out"). Recorded here as an owner decision, not as evidence the check passed.
+
+| Task | Status | Evidence |
+|---|---|---|
+| ENG-020 migrations | Done | `supabase/migrations/*_m2_core.sql`; reference data generated from the catalog (`npm run db:reference`), drift test |
+| ENG-021 grants, RLS, RPCs | Done | All tables: RLS on, no grants to `anon`/`authenticated`; 8 reviewed `SECURITY DEFINER` functions with `auth.uid()` checks and empty `search_path`; negative tests (direct table access, other users' sessions/meals, anon callers, reused idempotency keys) |
+| ENG-022 guest + persistent identity | Done | Supabase anonymous user → add email (same user id, data kept); sign-in elsewhere by 6-digit email code; guest cloud copy deleted when a phone signs into another account (no stranded data) |
+| ENG-023 session persistence | Done | `sync_session`: optimistic concurrency (`SESSION_VERSION_CONFLICT`), idempotency keys (AT-027), append-only exposures/reactions, undo = invalidation (R-007) |
+| ENG-024 preferences | Done | Variety setting synced (`save_preferences`) |
+| ENG-025 meal logging & correction | Done | "Your data" → Edit (dish and time); `save_meal` records `meal_corrected` events; delete |
+| ENG-026 exposure after correction | Done | Taste fatigue is recomputed from meals on every use; DB test shows corrected meal changes the derived load |
+| ENG-027 consent & deletion | Done | Consent before any cloud write (`CONSENT_REQUIRED`), withdrawal; `delete_my_account` deletes all personal rows + the auth identity, tracked in `deletion_requests` (AT-031) |
+
+**Deviations**
+- **D-12 No Next.js API server.** ETD ED-005 routes browser → Next.js API → RPC. The app is a static GitHub Pages site (no server deployment is authorized), so the browser calls the Supabase RPCs directly with the public publishable key. The security boundary is unchanged in substance: tables are not readable or writable by API roles, and every operation is a narrowly scoped database function that derives the owner from the verified token. Tested by negative access tests. Revisit if server-only logic (rate limiting, secrets, AI) is ever needed.
+- **D-13 Engine stays on the device.** ED-004 makes the backend authoritative for session state. For solo sessions the device runs the engine and the server is authoritative for *persisted* state (versions, ownership, append-only history). Couples modes (M3) will need server-authoritative sessions.
+- **D-14 Reduced schema.** Households, invitations, decision proposals, fulfillment events, media assets and the full §4.3 food-knowledge schema are not created (M3/M4). `dish_variants` holds dish identity only; attributes stay in the versioned JSON catalog. No `dietary_restrictions` table: restrictions remain device-only (owner decision 2026-11-06), which is stricter than the ETD.
+- **D-15 Local-first sync.** The phone keeps working offline; a three-way merge (`src/lib/sync-plan.ts`, ledger as base) reconciles meals, sessions and preferences. If the same meal is edited on two devices before syncing, the device syncing last wins.
+- **D-16 Email codes instead of links.** Supabase email templates send a 6-digit code; links would open Safari instead of the home-screen app on iPhone.
+
+**Open issues**
+- **I-13 Email delivery limits.** Supabase's built-in email sender is rate-limited and meant for testing (a few emails per hour). Fine for 1–2 people; a custom SMTP sender would be needed beyond that.
+- **I-14 Guest abuse protection.** Anonymous sign-ins are on without CAPTCHA (private prototype). Add CAPTCHA before sharing the link widely.
+- **I-15 GitHub backup overlap.** The private-GitHub backup still works alongside the account. Decide later whether to retire it.
+- **I-16 Database tests use PGlite** (Postgres 18 in WebAssembly) with a stub of Supabase's `auth` schema; production is Supabase Postgres 17. After `db push`, a smoke check against the real project is still required (docs/m2-supabase-setup.md).

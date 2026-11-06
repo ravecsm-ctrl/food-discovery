@@ -18,7 +18,10 @@ import {
 } from "@/lib/cloud-backup";
 import { RESTRICTION_LABELS } from "./DishInfo";
 import type { RestrictionKey } from "@/engine";
-import { clearAllLocalData, getProfile, getRestrictions, listMeals, removeMeal, replaceAll, setProfile, setRestrictions, snapshot } from "@/lib/local-store";
+import { clearAllLocalData, getProfile, getRestrictions, listMeals, onDataChange, removeMeal, replaceAll, setProfile, setRestrictions, snapshot } from "@/lib/local-store";
+import { detachBeforeLocalWipe } from "@/lib/cloud-sync";
+import { CloudAccount } from "./CloudAccount";
+import { MealEditor } from "./MealEditor";
 import { relativeWhen } from "@/lib/recent-meals";
 
 const catalog = loadCatalog();
@@ -43,6 +46,7 @@ export function DataPanel() {
   const [repo, setRepo] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [editing, setEditing] = useState<ConfirmedMeal | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => {
@@ -55,7 +59,12 @@ export function DataPanel() {
     startCloudBackup();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
-    return onCloudStatus(refresh);
+    const offData = onDataChange(refresh); // e.g. meals arriving from the cloud copy
+    const offCloud = onCloudStatus(refresh);
+    return () => {
+      offData();
+      offCloud();
+    };
   }, []);
 
   const run = async (fn: () => Promise<void>) => {
@@ -77,7 +86,9 @@ export function DataPanel() {
         ← Back
       </Link>
       <h1 className="mt-1 font-display text-[2.2rem] font-semibold">Your data</h1>
-      <p className="mt-1 text-sm text-muted">Everything is stored on this phone. Optionally, a copy is backed up to a private GitHub repository you own.</p>
+      <p className="mt-1 text-sm text-muted">Everything is stored on this phone. Optionally, save it to your account, or back it up to a private GitHub repository you own.</p>
+
+      <CloudAccount />
 
       {message && (
         <p role="status" className={`mt-4 rounded-2xl px-4 py-3 text-sm ${message.kind === "ok" ? "bg-surface-2" : "bg-warn-bg text-warn-ink"}`}>
@@ -150,20 +161,35 @@ export function DataPanel() {
                   {relativeWhen(m.consumedAt, new Date(), m.timeApprox)} · {new Date(m.consumedAt).toLocaleDateString()}
                 </span>
               </span>
-              <button
-                type="button"
-                className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold text-no"
-                onClick={() => {
-                  removeMeal(m.id);
-                  refresh();
-                }}
-                aria-label={`Remove ${nameOf(m)}`}
-              >
-                Remove
-              </button>
+              <span className="flex shrink-0 gap-1">
+                <button type="button" className="rounded-full px-3 py-1.5 text-xs font-semibold" onClick={() => setEditing(m)} aria-label={`Edit ${nameOf(m)}`}>
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-no"
+                  onClick={() => {
+                    removeMeal(m.id);
+                    refresh();
+                  }}
+                  aria-label={`Remove ${nameOf(m)}`}
+                >
+                  Remove
+                </button>
+              </span>
             </li>
           ))}
         </ul>
+        <p className="mt-2 text-xs text-muted">Fix a meal if you ate something else or at a different time — suggestions update right away.</p>
+        <MealEditor
+          meal={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            refresh();
+            setMessage({ kind: "ok", text: "Meal corrected." });
+          }}
+        />
       </section>
 
       <section className="mt-8 rounded-3xl bg-surface p-4 ring-1 ring-line" aria-labelledby="cloud" data-testid="cloud-backup">
@@ -341,9 +367,10 @@ export function DataPanel() {
         <button
           type="button"
           className="mt-2 rounded-full bg-no px-4 py-2 text-sm font-semibold text-white"
-          onClick={() => {
-            if (!window.confirm("Delete all meals, sessions and settings on this phone? The GitHub backup (if any) is disconnected first and kept.")) return;
+          onClick={async () => {
+            if (!window.confirm("Delete all meals, sessions and settings on this phone? The GitHub backup (if any) is disconnected first and kept. A guest cloud copy is deleted; an email account's cloud copy is kept.")) return;
             disconnect();
+            await detachBeforeLocalWipe();
             clearAllLocalData();
             refresh();
             setMessage({ kind: "ok", text: "Data on this phone cleared." });

@@ -143,6 +143,38 @@ export function removeMeal(id: string): void {
   write(local, KEYS.meals, listMeals().filter((m) => m.id !== id));
 }
 
+/** Correct a logged meal (R-015). Taste fatigue is recomputed from meals on every use, so it updates at once (ENG-026). */
+export function updateMeal(id: string, patch: Partial<Pick<ConfirmedMeal, "dishId" | "unrecognizedName" | "consumedAt" | "timeApprox">>): void {
+  write(
+    local,
+    KEYS.meals,
+    listMeals().map((m) => {
+      if (m.id !== id) return m;
+      const next = { ...m, ...patch };
+      if (next.dishId) next.unrecognizedName = null;
+      return next;
+    }),
+  );
+}
+
+/** Apply changes that arrived from the person's cloud copy (merge, never wholesale replace). */
+export function applyCloudChanges(c: {
+  upsertMeals: ConfirmedMeal[];
+  removeMeals: string[];
+  upsertSessions: EvalSessionRecord[];
+  varietySeeking: number | null;
+}): void {
+  if (c.upsertMeals.length || c.removeMeals.length) {
+    const drop = new Set([...c.removeMeals, ...c.upsertMeals.map((m) => m.id)]);
+    write(local, KEYS.meals, [...listMeals().filter((m) => !drop.has(m.id)), ...c.upsertMeals]);
+  }
+  if (c.upsertSessions.length) {
+    const ids = new Set(c.upsertSessions.map((s) => s.sessionId));
+    write(local, KEYS.sessions, [...listEvalSessions().filter((s) => !ids.has(s.sessionId)), ...c.upsertSessions]);
+  }
+  if (c.varietySeeking !== null) write(local, KEYS.profile, { ...getProfile(), varietySeeking: c.varietySeeking });
+}
+
 /* ---------------- policy assignment ---------------- */
 
 export type AssignmentSetting = "rotation" | string;
