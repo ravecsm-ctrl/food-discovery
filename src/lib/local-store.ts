@@ -62,6 +62,9 @@ const session = () => window.sessionStorage;
 
 /* ---------------- evaluation records ---------------- */
 
+/** "yes"/"no" = one (shared) reaction · "a"/"b" = Together disagreement: only that person wanted it. */
+export type ReactionCode = "yes" | "no" | "a" | "b";
+
 export interface ExposureRecord {
   position: number;
   dishId: string;
@@ -69,9 +72,9 @@ export interface ExposureRecord {
   selectionReason: string;
   q: number | null;
   selectionProbability: number;
-  reaction: "yes" | "no" | null;
+  reaction: ReactionCode | null;
   /** A reaction that was given then undone. */
-  undoneReactions: Array<"yes" | "no">;
+  undoneReactions: ReactionCode[];
   withdrawn: boolean;
 }
 
@@ -88,6 +91,8 @@ export interface RecommendationRunRecord {
 
 export type OutcomeEvent =
   | { type: "dish_selected"; at: string; dishId: string; rank: number; runIndex: number }
+  /** Together Mode: one explicit shared confirmation on a shared screen (PRRD J-03 step 7) — not proof of two accounts' consent. */
+  | { type: "joint_decision_confirmed"; at: string; dishId: string; rank: number; runIndex: number }
   | { type: "recommendations_dismissed"; at: string; runIndex: number }
   | { type: "continued_discovery"; at: string }
   | { type: "meal_consumption_confirmed"; at: string; mealId: string; dishId: string | null; matchesSelection: boolean; unrecognized: boolean }
@@ -97,6 +102,8 @@ export type OutcomeEvent =
 export interface EvalSessionRecord {
   schemaVersion: 1;
   sessionId: string;
+  /** Absent = solo. Participant names are never stored. */
+  mode?: "together";
   policyId: string;
   assignment: "rotation" | "manual";
   catalogVersion: string;

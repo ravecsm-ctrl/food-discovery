@@ -19,10 +19,12 @@ import {
   readiness,
   recommend,
   recordReaction,
+  recordSplitReaction,
   selectNextCard,
   undoLastReaction,
   type DiscoverySession,
   type EngineDeps,
+  type ParticipantNames,
   type ReactionValue,
   type RecommendationRun,
   type RestrictionKey,
@@ -51,7 +53,7 @@ import { RecentMealsStep } from "./RecentMealsStep";
 import { Sheet } from "./Sheet";
 import { SwipeCard } from "./SwipeCard";
 
-type Phase = "home" | "recent-meals" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
+type Phase = "home" | "recent-meals" | "together-setup" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
 
 interface OutcomeContext {
   sessionId: string;
@@ -82,8 +84,8 @@ function depsFor(policyId: string): EngineDeps {
 function pendingOutcome(): OutcomeContext | null {
   const sessions = listEvalSessions().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   for (const s of sessions.slice(0, 5)) {
-    const lastSel = [...s.events].reverse().find((e) => e.type === "dish_selected");
-    if (!lastSel || lastSel.type !== "dish_selected") continue;
+    const lastSel = [...s.events].reverse().find((e) => e.type === "dish_selected" || e.type === "joint_decision_confirmed");
+    if (!lastSel || (lastSel.type !== "dish_selected" && lastSel.type !== "joint_decision_confirmed")) continue;
     const resolved = s.events.some(
       (e) => (e.type === "meal_consumption_confirmed" || e.type === "meal_not_logged") && e.at >= lastSel.at,
     );
@@ -106,6 +108,10 @@ export function DiscoveryApp() {
   const [outcome, setOutcome] = useState<OutcomeContext | null>(null);
   const [pending, setPending] = useState<OutcomeContext | null>(null);
   const [exhaustedNotice, setExhaustedNotice] = useState(false);
+  /** Together Mode display names — kept in memory only, never stored or synced. */
+  const [pair, setPair] = useState<ParticipantNames | null>(null);
+  const [disagreeOpen, setDisagreeOpen] = useState(false);
+  const [jointConfirm, setJointConfirm] = useState<{ dishId: string; rank: number } | null>(null);
   const runTriggers = useRef<RecommendationRunRecord["trigger"][]>([]);
   const mainRef = useRef<HTMLElement>(null);
 
@@ -139,6 +145,7 @@ export function DiscoveryApp() {
       const rec: EvalSessionRecord = {
         schemaVersion: 1,
         sessionId: s.sessionId,
+        ...(s.mode === "together" ? { mode: "together" as const } : {}),
         policyId: s.policyId,
         assignment: asg,
         catalogVersion: s.catalogVersion,
@@ -229,6 +236,48 @@ export function DiscoveryApp() {
     setAnnounce("Discovery started.");
   }, [advance, persist, restrictions]);
 
+  /** Together Mode on one phone (PRRD J-03): both people's restrictions apply; no personal history is used. */
+  const startTogether = useCallback(
+    (names: ParticipantNames, partnerRestrictions: RestrictionKey[]) => {
+      const setting = getAssignmentSetting();
+      const asg = setting === "rotation" ? "rotation" : "manual";
+      const policyId = setting === "rotation" ? rotatePolicy(listEvalSessions().length) : setting;
+      const policy = getPolicy(policyId);
+      const s = createSession({
+        sessionId: newId(),
+        seed: newSeed(),
+        policyId,
+        catalogVersion: catalog.catalogVersion,
+        constraints: { ...DEFAULT_CONSTRAINTS, avoidedIngredients: [...new Set([...restrictions, ...partnerRestrictions])] },
+        now: nowIso(),
+        initialBudget: policy.session.initialBudget,
+        mode: "together",
+      });
+      runTriggers.current = [];
+      setPair(names);
+      setAssignment(asg);
+      setExhaustedNotice(false);
+      setLeaving(null);
+      setDisagreeOpen(false);
+      setPhase("discover");
+      advance(s, {}, [], asg);
+      setAnnounce(`Together mode started for ${names.a} and ${names.b}.`);
+    },
+    [advance, restrictions],
+  );
+
+  const reactSplit = useCallback(
+    (wantedBy: "a" | "b") => {
+      const pendingCard = session ? currentExposure(session) : null;
+      if (!session || !pendingCard || leaving || !pair) return;
+      setDisagreeOpen(false);
+      const s2 = recordSplitReaction(session, wantedBy, nowIso());
+      advance(s2, traces, runs, assignment);
+      setAnnounce(`${catalog.byId.get(pendingCard.dishId)?.name ?? ""}: only ${pair[wantedBy]} wants it.`);
+    },
+    [advance, assignment, leaving, pair, runs, session, traces],
+  );
+
   const react = useCallback(
     (value: ReactionValue) => {
       const pendingCard = session ? currentExposure(session) : null;
@@ -239,7 +288,8 @@ export function DiscoveryApp() {
         setLeaving(null);
         const s2 = recordReaction(session, value, nowIso());
         advance(s2, traces, runs, assignment);
-        setAnnounce(`${dishName}: ${value === "yes" ? "Sounds good" : "Not tonight"}.`);
+        setDisagreeOpen(false);
+        setAnnounce(`${dishName}: ${value === "yes" ? (session.mode === "together" ? "You both like it" : "Sounds good") : session.mode === "together" ? "Not for you two" : "Not tonight"}.`);
       };
       if (prefersReducedMotion()) commit();
       else window.setTimeout(commit, 200);
@@ -290,9 +340,22 @@ export function DiscoveryApp() {
     [advance, assignment, persist, runs, session, traces],
   );
 
+  const confirmJoint = useCallback(() => {
+    if (!session || !jointConfirm) return;
+    // One explicit shared confirmation records the joint decision (J-03 step 7). It is not a meal.
+    appendEvalEvent(session.sessionId, { type: "joint_decision_confirmed", at: nowIso(), dishId: jointConfirm.dishId, rank: jointConfirm.rank, runIndex: runs.length - 1 });
+    setOutcome({ sessionId: session.sessionId, dishId: jointConfirm.dishId });
+    setJointConfirm(null);
+    setPhase("picked");
+  }, [jointConfirm, runs.length, session]);
+
   const choose = useCallback(
     (dishId: string, rank: number) => {
       if (!session) return;
+      if (session.mode === "together") {
+        setJointConfirm({ dishId, rank });
+        return;
+      }
       appendEvalEvent(session.sessionId, { type: "dish_selected", at: nowIso(), dishId, rank, runIndex: runs.length - 1 });
       setOutcome({ sessionId: session.sessionId, dishId });
       setPhase("picked");
@@ -332,6 +395,9 @@ export function DiscoveryApp() {
     setRuns([]);
     setTraces({});
     setOutcome(null);
+    setPair(null);
+    setDisagreeOpen(false);
+    setJointConfirm(null);
     setPending(pendingOutcome());
     setPhase("home");
   }, []);
@@ -372,6 +438,7 @@ export function DiscoveryApp() {
             restrictions={restrictions}
             pending={pending}
             onStart={() => setPhase("recent-meals")}
+            onStartTogether={() => setPhase("together-setup")}
             onRestrictions={() => setRestrictionsOpen(true)}
             onPendingAte={(ctx) => confirmMeal(ctx, ctx.dishId, null)}
             onPendingOther={(ctx) => {
@@ -386,6 +453,8 @@ export function DiscoveryApp() {
         )}
 
         {phase === "recent-meals" && <RecentMealsStep onContinue={start} onBack={goHome} />}
+
+        {phase === "together-setup" && <TogetherSetup ownRestrictions={restrictions} onStart={startTogether} onBack={goHome} />}
 
         {phase === "discover" && session && (
           <section className="flex flex-1 flex-col" aria-label="Food cards">
@@ -435,34 +504,57 @@ export function DiscoveryApp() {
               </div>
             )}
 
-            <div className="mt-4 grid grid-cols-[auto_1fr_1fr] items-center gap-2.5">
-              <button
-                type="button"
-                onClick={undo}
-                disabled={!canUndo(session)}
-                className="grid h-14 w-14 place-items-center rounded-full bg-surface text-xl ring-1 ring-line disabled:opacity-35"
-                aria-label="Undo last reaction"
-                title="Undo (U)"
-              >
-                ↶
+            {session.mode === "together" && pair && disagreeOpen ? (
+              <div className="mt-4 rounded-3xl bg-surface p-3 ring-1 ring-line" role="group" aria-labelledby="who-wants" data-testid="disagree-panel">
+                <p id="who-wants" className="px-1 text-sm font-semibold">
+                  Who wants {currentDish?.name ?? "it"}?
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {(["a", "b"] as const).map((who) => (
+                    <button key={who} type="button" onClick={() => reactSplit(who)} className="h-12 rounded-full bg-surface-2 px-3 text-[15px] font-semibold">
+                      Only {pair[who]}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setDisagreeOpen(false)} className="mt-1 w-full py-2 text-sm text-muted">
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 grid grid-cols-[auto_1fr_1fr] items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={undo}
+                  disabled={!canUndo(session)}
+                  className="grid h-14 w-14 place-items-center rounded-full bg-surface text-xl ring-1 ring-line disabled:opacity-35"
+                  aria-label="Undo last reaction"
+                  title="Undo (U)"
+                >
+                  ↶
+                </button>
+                <button
+                  type="button"
+                  onClick={() => react("no")}
+                  disabled={!currentDish}
+                  className="flex h-16 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-2 text-[15px] font-semibold text-no ring-2 ring-no/60 active:scale-[0.98]"
+                >
+                  <span aria-hidden="true">✕</span> {session.mode === "together" ? "Not for us" : "Not tonight"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => react("yes")}
+                  disabled={!currentDish}
+                  className="flex h-16 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-yes px-2 text-[15px] font-semibold text-white active:scale-[0.98]"
+                >
+                  <span aria-hidden="true">♥</span> {session.mode === "together" ? "We like it" : "Sounds good"}
+                </button>
+              </div>
+            )}
+            {session.mode === "together" && pair && !disagreeOpen && (
+              <button type="button" onClick={() => setDisagreeOpen(true)} disabled={!currentDish} className="mt-2 h-11 w-full rounded-full text-[15px] font-medium text-muted ring-1 ring-line">
+                We disagree on this one
               </button>
-              <button
-                type="button"
-                onClick={() => react("no")}
-                disabled={!currentDish}
-                className="flex h-16 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-2 text-[15px] font-semibold text-no ring-2 ring-no/60 active:scale-[0.98]"
-              >
-                <span aria-hidden="true">✕</span> Not tonight
-              </button>
-              <button
-                type="button"
-                onClick={() => react("yes")}
-                disabled={!currentDish}
-                className="flex h-16 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-yes px-2 text-[15px] font-semibold text-white active:scale-[0.98]"
-              >
-                <span aria-hidden="true">♥</span> Sounds good
-              </button>
-            </div>
+            )}
             <p className="mt-3 hidden text-center text-xs text-muted sm:block">Keyboard: ← Not tonight · → Sounds good · U Undo</p>
           </section>
         )}
@@ -473,6 +565,7 @@ export function DiscoveryApp() {
             exhausted={exhaustedNotice}
             safetyFor={(id) => candidates.byId.get(id)?.safety ?? { status: "no_restrictions_declared", possibleConflicts: [] }}
             onChoose={choose}
+            names={session.mode === "together" ? pair : null}
             onKeepDiscovering={keepDiscovering}
             onUndo={canUndo(session) ? undo : undefined}
             onStartOver={goHome}
@@ -482,6 +575,7 @@ export function DiscoveryApp() {
         {phase === "picked" && outcome && (
           <Picked
             dishId={outcome.dishId}
+            partnerName={session?.mode === "together" ? (pair?.b ?? null) : null}
             onAte={() => confirmMeal(outcome, outcome.dishId, null)}
             onOther={() => setPhase("other-meal")}
             onNotLogging={() => {
@@ -518,6 +612,25 @@ export function DiscoveryApp() {
         )}
       </main>
 
+      <Sheet open={!!jointConfirm} onClose={() => setJointConfirm(null)} title="Your pick together?">
+        {jointConfirm && pair && (
+          <div data-testid="joint-confirm">
+            <p>
+              Make <strong>{catalog.byId.get(jointConfirm.dishId)?.name}</strong> tonight&apos;s pick for {pair.a} and {pair.b}?
+            </p>
+            <p className="mt-1 text-sm text-muted">Confirm together on this screen. Choosing isn&apos;t the same as eating — you can log your meal later.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={confirmJoint} className="rounded-full bg-accent px-5 py-2.5 font-semibold text-accent-ink">
+                Yes, it&apos;s our pick
+              </button>
+              <button type="button" onClick={() => setJointConfirm(null)} className="rounded-full px-4 py-2.5 font-semibold text-muted ring-1 ring-line">
+                Not yet
+              </button>
+            </div>
+          </div>
+        )}
+      </Sheet>
+
       <Sheet open={!!detailsDish} onClose={() => setDetailsFor(null)} title={detailsDish?.name ?? ""}>
         {detailsDish && (
           <DishDetails dish={detailsDish} safety={candidates.byId.get(detailsDish.id)?.safety ?? { status: "no_restrictions_declared", possibleConflicts: [] }} />
@@ -544,6 +657,7 @@ function Home(props: {
   restrictions: RestrictionKey[];
   pending: OutcomeContext | null;
   onStart: () => void;
+  onStartTogether: () => void;
   onRestrictions: () => void;
   onPendingAte: (ctx: OutcomeContext) => void;
   onPendingOther: (ctx: OutcomeContext) => void;
@@ -602,6 +716,9 @@ function Home(props: {
         >
           Start discovering
         </button>
+        <button type="button" onClick={props.onStartTogether} className="mt-3 h-12 rounded-full bg-surface text-[15px] font-semibold ring-1 ring-line">
+          Decide together on this phone
+        </button>
         <button type="button" onClick={props.onRestrictions} className="mt-3 h-12 rounded-full bg-surface text-[15px] font-medium ring-1 ring-line">
           Dietary restrictions{props.restrictions.length > 0 ? ` · ${props.restrictions.length} avoided` : ""}
         </button>
@@ -628,6 +745,8 @@ function Results(props: {
   exhausted: boolean;
   safetyFor: (dishId: string) => SafetyAssessment;
   onChoose: (dishId: string, rank: number) => void;
+  /** Together Mode names; null for solo. */
+  names: ParticipantNames | null;
   onKeepDiscovering: (dismissed: boolean) => void;
   onUndo?: () => void;
   onStartOver: () => void;
@@ -635,12 +754,15 @@ function Results(props: {
   const run = props.run;
   const noMatch = !run || run.noMatch;
   const quick = run?.source === "quick_picks";
-  const heading = noMatch ? "No strong match yet" : quick ? "Fresh ideas for today" : run.kind === "ready" ? "Here's what sounds good" : "A few early ideas";
+  const together = props.names !== null;
+  const heading = noMatch ? "No strong match yet" : quick ? "Fresh ideas for today" : together ? `Picks for ${props.names?.a} & ${props.names?.b}` : run.kind === "ready" ? "Here's what sounds good" : "A few early ideas";
   const sub = noMatch
     ? "Nothing stood out from your reactions so far. That's fine — try a few more dishes."
     : quick
       ? "A change from what you've eaten recently. Not feeling these? Swipe a few dishes and we'll learn what you're in the mood for."
-      : run.kind === "ready"
+      : together
+        ? `Based on the ${run.effectiveCards} card${run.effectiveCards === 1 ? "" : "s"} you reacted to together${run.kind === "ready" ? "" : " — more cards will sharpen these"}. Ranked so neither of you gets something you didn't want.`
+        : run.kind === "ready"
         ? `Based on your ${run.effectiveCards} reactions this session.`
         : `Based on only ${run.effectiveCards} reaction${run.effectiveCards === 1 ? "" : "s"} — more cards will sharpen these.`;
   return (
@@ -652,7 +774,7 @@ function Results(props: {
       {props.exhausted && <p className="mt-2 text-sm text-muted">You&apos;ve seen every available dish in this prototype catalog.</p>}
       {run && run.excludedByConstraints > 0 && (
         <p className="mt-2 text-sm text-muted">
-          {run.excludedByConstraints} dish{run.excludedByConstraints === 1 ? " was" : "es were"} hidden because of your dietary restrictions.
+          {run.excludedByConstraints} dish{run.excludedByConstraints === 1 ? " was" : "es were"} hidden because of {together ? "your dietary restrictions (both of you)" : "your dietary restrictions"}.
         </p>
       )}
 
@@ -661,7 +783,7 @@ function Results(props: {
           {run.items.map((item) => {
             const d = catalog.byId.get(item.dishId);
             if (!d) return null;
-            const reasons = explainItem(item, catalog, run.source).filter((r) => r.code !== "FULFILLMENT_UNVERIFIED");
+            const reasons = explainItem(item, catalog, run.source, props.names ?? undefined).filter((r) => r.code !== "FULFILLMENT_UNVERIFIED");
             return (
               <li key={item.dishId} className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line" data-testid="recommendation">
                 <div className="flex gap-4 p-4">
@@ -689,7 +811,7 @@ function Results(props: {
                     onClick={() => props.onChoose(item.dishId, item.rank)}
                     className="h-12 w-full rounded-full bg-accent font-semibold text-accent-ink"
                   >
-                    Choose {d.name}
+                    {together ? `Pick ${d.name} together` : `Choose ${d.name}`}
                   </button>
                 </div>
               </li>
@@ -717,7 +839,16 @@ function Results(props: {
   );
 }
 
-function Picked(props: { dishId: string; onAte: () => void; onOther: () => void; onNotLogging: () => void; onLater: () => void; onBack?: () => void }) {
+function Picked(props: {
+  dishId: string;
+  /** Together Mode: the partner's meal is never logged to this phone's history (R-017). */
+  partnerName?: string | null;
+  onAte: () => void;
+  onOther: () => void;
+  onNotLogging: () => void;
+  onLater: () => void;
+  onBack?: () => void;
+}) {
   const d = catalog.byId.get(props.dishId);
   if (!d) return null;
   return (
@@ -725,11 +856,16 @@ function Picked(props: { dishId: string; onAte: () => void; onOther: () => void;
       <div className="mt-4 h-56 overflow-hidden rounded-[28px]">
         <DishArt dish={d} />
       </div>
-      <p className="mt-5 text-sm font-semibold uppercase tracking-wide text-muted">Tonight&apos;s pick</p>
+      <p className="mt-5 text-sm font-semibold uppercase tracking-wide text-muted">{props.partnerName ? "Your pick together" : "Tonight\u2019s pick"}</p>
       <h1 className="font-display text-[2.2rem] font-semibold leading-tight">{d.name}</h1>
       <p className="mt-2 text-muted">
         Enjoy! Picking a dish doesn&apos;t record it as eaten. If you like, tell us what you actually had — now or next time you open the app.
       </p>
+      {props.partnerName && (
+        <p className="mt-2 text-sm text-muted" data-testid="partner-note">
+          Only your own meal is logged on this phone — {props.partnerName}&apos;s isn&apos;t saved.
+        </p>
+      )}
       <div className="mt-6 space-y-2">
         <button type="button" onClick={props.onAte} className="h-12 w-full rounded-full bg-yes font-semibold text-white">
           I ate this
@@ -852,5 +988,68 @@ function RestrictionsSheet(props: { open: boolean; value: RestrictionKey[]; onCl
         Save
       </button>
     </Sheet>
+  );
+}
+
+/** Together Mode setup (PRRD J-03). Names stay in memory; the partner's restrictions apply to this session only. */
+function TogetherSetup(props: { ownRestrictions: RestrictionKey[]; onStart: (names: ParticipantNames, partnerRestrictions: RestrictionKey[]) => void; onBack: () => void }) {
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [partner, setPartner] = useState<RestrictionKey[]>([]);
+  const toggle = (k: RestrictionKey) => setPartner((xs) => (xs.includes(k) ? xs.filter((x) => x !== k) : [...xs, k]));
+  return (
+    <section className="flex flex-1 flex-col pt-3" aria-labelledby="together-title" data-testid="together-setup">
+      <button type="button" onClick={props.onBack} className="self-start rounded-full py-2 text-sm font-medium text-muted">
+        ← Back
+      </button>
+      <h1 id="together-title" className="mt-2 font-display text-[2rem] font-semibold leading-tight">
+        Decide together
+      </h1>
+      <p className="mt-2 text-muted">Swipe as a pair on this phone. When you disagree on a dish, say who wants it — picks are ranked so neither of you gets something you didn&apos;t want.</p>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <label className="text-sm font-semibold">
+          Your name
+          <input value={a} onChange={(e) => setA(e.target.value)} placeholder="You" maxLength={20} autoComplete="off" className="mt-1 h-11 w-full rounded-2xl bg-surface-2 px-3 text-[16px] font-normal" />
+        </label>
+        <label className="text-sm font-semibold">
+          Partner&apos;s name
+          <input value={b} onChange={(e) => setB(e.target.value)} placeholder="Partner" maxLength={20} autoComplete="off" className="mt-1 h-11 w-full rounded-2xl bg-surface-2 px-3 text-[16px] font-normal" />
+        </label>
+      </div>
+
+      <fieldset className="mt-5">
+        <legend className="text-sm font-semibold">Anything your partner avoids?</legend>
+        <p className="text-xs text-muted">
+          Used for this session only, then forgotten.
+          {props.ownRestrictions.length > 0 ? " Your saved restrictions apply too." : ""}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {RESTRICTION_KEYS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={partner.includes(k)}
+              onClick={() => toggle(k)}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 ${partner.includes(k) ? "bg-ink text-surface ring-ink" : "bg-surface ring-line"}`}
+            >
+              {RESTRICTION_LABELS[k].split(" (")[0]}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <p className="mt-5 text-xs text-muted">Together mode only uses what you both do now — not either person&apos;s meal history. Names aren&apos;t saved.</p>
+
+      <div className="mt-auto pb-2 pt-6">
+        <button
+          type="button"
+          onClick={() => props.onStart({ a: a.trim() || "You", b: b.trim() || "Partner" }, partner)}
+          className="h-14 w-full rounded-full bg-accent text-lg font-semibold text-accent-ink"
+        >
+          Start together
+        </button>
+      </div>
+    </section>
   );
 }

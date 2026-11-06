@@ -4,8 +4,12 @@
  */
 import type { CardExposure, ReactionStrength, ReactionValue, Reaction, SessionConstraints } from "./types.ts";
 
+export type SessionMode = "solo" | "together";
+
 export interface DiscoverySession {
   sessionId: string;
+  /** "together" = two people sharing one phone (PRRD J-03). */
+  mode: SessionMode;
   seed: number;
   policyId: string;
   catalogVersion: string;
@@ -28,9 +32,11 @@ export function createSession(args: {
   constraints: SessionConstraints;
   now: string;
   initialBudget: number;
+  mode?: SessionMode;
 }): DiscoverySession {
   return {
     sessionId: args.sessionId,
+    mode: args.mode ?? "solo",
     seed: args.seed,
     policyId: args.policyId,
     catalogVersion: args.catalogVersion,
@@ -63,8 +69,9 @@ export function shownDishIds(s: DiscoverySession): Set<string> {
   return new Set(s.exposures.filter((e) => !e.withdrawn).map((e) => e.dishId));
 }
 
+/** Cards with an active reaction. A disagreement (two attributed reactions) still counts as one card. */
 export function effectiveCardCount(s: DiscoverySession): number {
-  return activeReactions(s).length;
+  return new Set(activeReactions(s).map((r) => r.exposureId)).size;
 }
 
 export function addExposure(s: DiscoverySession, dishId: string, now: string, selectionProbability = 1): DiscoverySession {
@@ -103,6 +110,30 @@ export function recordReaction(
     invalidatedAt: null,
   };
   return { ...s, reactions: [...s.reactions, reaction], actionCounter: n };
+}
+
+/**
+ * Together Mode disagreement (PRRD J-03 steps 3–4): only one person wants this dish.
+ * Records two attributed reactions in ONE action group, so a single Undo removes both.
+ */
+export function recordSplitReaction(s: DiscoverySession, wantedBy: "a" | "b", now: string): DiscoverySession {
+  if (s.mode !== "together") throw new Error("Split reactions exist only in Together Mode");
+  const exposure = currentExposure(s);
+  if (!exposure) throw new Error("No card is awaiting a reaction");
+  const n = s.actionCounter + 1;
+  const mk = (participant: "a" | "b"): Reaction => ({
+    reactionId: `${s.sessionId}:r${n}${participant}`,
+    actionGroupId: `${s.sessionId}:g${n}`,
+    exposureId: exposure.exposureId,
+    dishId: exposure.dishId,
+    value: participant === wantedBy ? "yes" : "no",
+    strength: "ordinary",
+    participant,
+    active: true,
+    recordedAt: now,
+    invalidatedAt: null,
+  });
+  return { ...s, reactions: [...s.reactions, mk("a"), mk("b")], actionCounter: n };
 }
 
 export function canUndo(s: DiscoverySession): boolean {

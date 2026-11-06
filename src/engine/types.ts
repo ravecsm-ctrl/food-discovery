@@ -98,6 +98,12 @@ export interface Reaction {
   dishId: string;
   value: ReactionValue;
   strength: ReactionStrength;
+  /**
+   * Together Mode only: who this reaction belongs to when the pair disagreed ("a" = phone owner,
+   * "b" = partner). Absent = one shared reaction for the card (or a solo reaction). A shared Yes is
+   * never treated as two separately observed individual Yes reactions (ETD §8.10, R-011).
+   */
+  participant?: "a" | "b";
   active: boolean;
   recordedAt: ISODateTime;
   invalidatedAt: ISODateTime | null;

@@ -3,6 +3,7 @@
  * Both policies draw from the SAME eligible candidate set (ALG-018).
  */
 import { buildCandidates } from "./eligibility.ts";
+import { depsForSession } from "./together.ts";
 import { dishFatigue, recentLoad } from "./fatigue.ts";
 import type { PolicyConfig } from "./policy.ts";
 import { tieBreak } from "./rng.ts";
@@ -92,6 +93,7 @@ export function baselineSequence(eligible: readonly Dish[], deps: EngineDeps, se
 
 /** Choose the next card, or null when no eligible unseen dish remains. */
 export function selectNextCard(session: DiscoverySession, deps: EngineDeps): CardChoice | null {
+  deps = depsForSession(session, deps);
   const { eligible } = buildCandidates(deps.catalog, session.constraints);
   const shown = shownDishIds(session);
   const unseen = eligible.filter((d) => !shown.has(d.id));

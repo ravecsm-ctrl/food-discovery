@@ -136,3 +136,27 @@ Scope: you asked for five things, and this update delivers all of them. Steps 1�
 - **I-17 Email sender.** Supabase's free plan only allows custom (6-digit code) email templates with a custom SMTP sender. Emails are sent through the owner's Gmail (app password entered by the owner in the Supabase dashboard; never stored in this repo). Gmail limits apply; deleting the Google app password stops all app email without affecting anything else.
 
 **Live verification (2026-11-07, project `tvwezplvsvdzsqqmdukw`):** migrations applied with `supabase db push`; auth settings with `supabase config push`. As a stranger, every table read/insert and every RPC returned *permission denied*; with two real guest accounts: no write before consent, duplicate request deduplicated, the second guest could not see, edit or delete the first guest's meal, direct table reads denied with a valid token, and `delete_my_account` completed. A real code email was delivered through Gmail.
+
+## 8. M3 step 1 — Together Mode on one phone (approved by product owner, 2026-11-07)
+
+Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) and ENG-033 (final approval, shared-screen form). Not in this step: invitations, Individual Mode across devices, realtime, households (ENG-029–031, 034–035).
+
+| Rule (PRRD/ETD) | Implementation | Evidence |
+|---|---|---|
+| J-03.2 one shared reaction per card | "We like it" / "Not for us" (and swipes) record one unattributed reaction | engine + DB tests (AT-013) |
+| J-03.3–4 optional disagreement, attributed | "We disagree on this one" → "Only {name}": two attributed reactions in one action group; one Undo removes both | engine + DB + browser tests (AT-014) |
+| ETD §8.10 joint ranking | `Joint = 0.65 × mean(Ua, Ub) + 0.35 × min(Ua, Ub)` (`JOINT_V0`); each Uj = shared reactions + that person's attributed ones; a one-sided "no" doesn't remove a dish, a shared one does | `together.test.ts` |
+| ETD §8.10 shared Yes ≠ two individual Yes | Stored once with scope `shared`; explained as "you both said yes", never BOTH_PARTICIPANTS_LIKED | engine + DB tests |
+| J-03.7 one explicit shared confirmation | "Pick … together" → confirmation sheet → `joint_decision_confirmed` (session state `decision_confirmed`); not a meal | DB + browser tests (AT-020) |
+| R-017 meal ownership | Only the phone owner can log their own meal afterwards; the partner's is never saved | browser test |
+| R-022 private by default | Together Mode uses **no personal history** (no meal history, taste fatigue or stored preferences) because both people see the screen | engine test (identical results with/without history) |
+| R-023 restrictions | Owner's saved restrictions + partner's restrictions (session only, then forgotten) are hard exclusions before ranking | engine + browser tests |
+| Privacy | Names stay in memory only; partner restrictions never stored or synced; cloud stores only whether avoidances were active | browser + DB tests |
+
+**Database:** migration `20261107000300_together_mode.sql` — partner = participant slot 2 with no account; shared card exposures; reaction uniqueness per (card, participant, sequence); a trigger rejects active shared and individual reactions on the same card; `fd_session_json` round-trips disagreement codes (`"a"`/`"b"`). Solo sessions are unchanged.
+
+**Evaluation:** the Lab's card-policy comparison counts solo sessions only (Together sessions use a different, joint objective).
+
+**Deviations / open issues**
+- **D-17** Together Mode ignores taste fatigue and recent meals (privacy on a shared screen). A future option: an optional, session-only "what have you two eaten recently?" question.
+- **I-18** "We disagree" records only who wanted the dish, not strength of feeling. Revisit if real use shows people want "only Sam, and Rave really doesn't".

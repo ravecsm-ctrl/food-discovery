@@ -318,3 +318,87 @@ describe("ENG-027 account deletion (R-024, AT-031)", () => {
     expect(await db.admin("select count(*) from public.dish_variants")).toEqual(catalogBefore);
   });
 });
+
+describe("M3 Together Mode storage (PRRD J-03, R-011, R-017 · AT-013, AT-014)", () => {
+  const exp = (position: number, dishId: string, reaction: string | null, undoneReactions: string[] = []) => ({
+    position,
+    dishId,
+    shownAt: NOW,
+    selectionReason: "adaptive_utility",
+    q: 0.2,
+    selectionProbability: 1,
+    reaction,
+    undoneReactions,
+    withdrawn: false,
+  });
+  const together = (id: string, exposures: unknown[], events: unknown[] = []) => session(id, { mode: "together", exposures, events, names: { a: "Rave", b: "Sam" } });
+
+  it("round-trips shared votes and disagreements exactly; never stores names", async () => {
+    const sid = uuid(500);
+    const s = together(sid, [exp(1, "dish-chicken-pho", "yes"), exp(2, "dish-pork-tonkatsu", "a"), exp(3, "dish-bulalo", "no"), exp(4, "dish-beef-pho", "yes", ["b"])]);
+    await sync(db, A, 0, s);
+    const back = (await myData(db, A)).sessions.find((x) => x.sessionId === sid)!;
+    expect(back.mode).toBe("together");
+    expect((back.exposures as Array<{ reaction: string | null; undoneReactions: string[] }>).map((e) => [e.reaction, e.undoneReactions])).toEqual([
+      ["yes", []],
+      ["a", []],
+      ["no", []],
+      ["yes", ["b"]],
+    ]);
+    expect(JSON.stringify(back)).not.toMatch(/Rave|Sam/);
+  });
+
+  it("a shared vote is ONE shared row; a disagreement is two attributed rows in one action group; the partner has no account", async () => {
+    const sid = uuid(501);
+    await sync(db, A, 0, together(sid, [exp(1, "dish-chicken-pho", "yes"), exp(2, "dish-pork-tonkatsu", "b")]));
+    const rows = await db.admin<{ position: number; scope: string; slot: number | null; reaction: string; grp: string }>(
+      `select x.position, r.scope, p.slot, r.reaction, r.action_group_id::text as grp from public.reaction_events r
+       join public.card_exposures x on x.id = r.exposure_id left join public.session_participants p on p.id = r.participant_id
+       where x.session_id = $1 order by x.position, p.slot nulls first`, [sid]);
+    expect(rows.map((r) => omit(r, "grp"))).toEqual([
+      { position: 1, scope: "shared", slot: null, reaction: "yes" },
+      { position: 2, scope: "individual", slot: 1, reaction: "no" },
+      { position: 2, scope: "individual", slot: 2, reaction: "yes" },
+    ]);
+    expect(rows[1]!.grp).toBe(rows[2]!.grp);
+    const parts = await db.admin<{ slot: number; user_id: string | null }>("select slot, user_id from public.session_participants where session_id = $1 order by slot", [sid]);
+    expect(parts).toEqual([{ slot: 1, user_id: A }, { slot: 2, user_id: null }]);
+  });
+
+  it("undoing a disagreement then agreeing keeps one active action per card", async () => {
+    const sid = uuid(502);
+    const v = await sync(db, A, 0, together(sid, [exp(1, "dish-chicken-pho", "a")]));
+    await sync(db, A, v, together(sid, [exp(1, "dish-chicken-pho", "yes", ["a"])]));
+    const active = await db.admin<{ scope: string }>(
+      "select r.scope from public.reaction_events r join public.card_exposures x on x.id = r.exposure_id where x.session_id = $1 and r.invalidated_at is null", [sid]);
+    expect(active).toEqual([{ scope: "shared" }]);
+  });
+
+  it("the database itself refuses an active shared vote alongside active individual ones", async () => {
+    const [x] = await db.admin<{ id: string }>("select x.id from public.card_exposures x where x.session_id = $1 and x.position = 2", [uuid(501)]);
+    await expect(db.admin(
+      "insert into public.reaction_events(action_group_id, exposure_id, actor_user_id, scope, reaction, sequence) values (gen_random_uuid(), $1, $2, 'shared', 'yes', 9)", [x!.id, A],
+    )).rejects.toThrow(/cannot both be active/);
+  });
+
+  it("a confirmed joint decision is a decision, not a meal (AT-020, R-016, R-017)", async () => {
+    const sid = uuid(503);
+    const meals = (await myData(db, A)).meals.length;
+    await sync(db, A, 0, together(sid, [exp(1, "dish-chicken-pho", "yes")], [{ type: "joint_decision_confirmed", at: NOW, dishId: "dish-chicken-pho", rank: 1, runIndex: 0 }]));
+    const [st] = await db.admin<{ state: string }>("select state from public.discovery_sessions where id = $1", [sid]);
+    expect(st!.state).toBe("decision_confirmed");
+    expect((await myData(db, A)).meals.length).toBe(meals);
+  });
+
+  it("rejects disagreement codes in solo sessions and switching a session's mode", async () => {
+    await expect(sync(db, A, 0, session(uuid(504), { exposures: [exp(1, "dish-bulalo", "a")] }))).rejects.toThrow(/unknown reaction/);
+    const sid = uuid(505);
+    const v = await sync(db, A, 0, session(sid));
+    await expect(sync(db, A, v, together(sid, [exp(1, "dish-chicken-adobo", "yes")]))).rejects.toThrow(/mode cannot change/);
+  });
+
+  it("another user can't see or write my Together session", async () => {
+    await expect(sync(db, B, 1, together(uuid(500), []))).rejects.toThrow(/NOT_FOUND/);
+    expect((await myData(db, B)).sessions.map((s) => s.sessionId)).not.toContain(uuid(500));
+  });
+});

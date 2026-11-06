@@ -23,7 +23,7 @@ export interface ScoreBreakdown {
   exposureAdjustment: number;
   utility: number;
   /** Positively reacted dishes that meaningfully support this dish (for grounded reasons). */
-  supportingLikes: Array<{ dishId: string; similarity: number }>;
+  supportingLikes: Array<{ dishId: string; similarity: number; by?: "a" | "b" }>;
 }
 
 export interface ScoringInputs {
@@ -71,7 +71,7 @@ export function currentAppetite(
     const w = reactionWeight(r, policy);
     const sim = dishSimilarity(catalog, dishId, r.dishId, policy.similarityKindWeights);
     if (r.value === "yes" && sim >= policy.reasons.supportingSimilarityMin) {
-      supportingLikes.push({ dishId: r.dishId, similarity: sim });
+      supportingLikes.push(r.participant ? { dishId: r.dishId, similarity: sim, by: r.participant } : { dishId: r.dishId, similarity: sim });
     }
     if (cfg.normalization === "global") {
       num += w * sim;

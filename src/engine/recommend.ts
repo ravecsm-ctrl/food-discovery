@@ -11,6 +11,7 @@ import { activeReactions, effectiveCardCount, shownDishIds, type DiscoverySessio
 import { dishSimilarity, sharedAttributes } from "./similarity.ts";
 import type { Dish, FulfillmentStatus, ReasonCode, SafetyAssessment } from "./types.ts";
 import { tieBreak } from "./rng.ts";
+import { depsForSession, jointScore } from "./together.ts";
 
 export interface RecommendationItem {
   rank: number;
@@ -21,7 +22,8 @@ export interface RecommendationItem {
   safety: SafetyAssessment;
   reasonCodes: ReasonCode[];
   evidence: {
-    likedSimilar: Array<{ dishId: string; sharedAttributes: string[] }>;
+    /** `by` = which Together participant liked it; absent = a shared (or solo) like. */
+    likedSimilar: Array<{ dishId: string; sharedAttributes: string[]; by?: "a" | "b" }>;
     recentMealsConsidered: number;
     /** Recently eaten qualities (e.g. "method:fried", "style:comfort") this dish is a change from. */
     varietyFrom: string[];
@@ -52,7 +54,8 @@ export function inputDigest(session: DiscoverySession, deps: EngineDeps): string
     c: deps.catalog.catalogVersion,
     s: session.seed,
     k: session.constraints,
-    r: activeReactions(session).map((r) => [r.dishId, r.value, r.strength]),
+    r: activeReactions(session).map((r) => [r.dishId, r.value, r.strength, r.participant ?? ""]),
+    md: session.mode,
     m: deps.user.confirmedMeals.map((m) => [m.id, m.dishId, m.consumedAt]),
     w: deps.user.stableAttributeWeights,
     n: deps.user.noveltyPreference,
@@ -89,14 +92,18 @@ function reasonCodesFor(
 
 /** Produce 0–3 diverse, evidence-backed recommendations. Zero items is a valid no-match result. */
 export function recommend(session: DiscoverySession, deps: EngineDeps): RecommendationRun {
+  deps = depsForSession(session, deps);
+  const together = session.mode === "together";
   const cfg = deps.policy.shortlist;
   const candidates = buildCandidates(deps.catalog, session.constraints);
   const inputs = scoringInputs(session, deps);
-  const rejectedNow = new Set(inputs.reactions.filter((x) => x.value === "no").map((x) => x.dishId));
+  // "Not tonight" removes a dish for this session. In Together Mode only a SHARED No does; a dish one
+  // person wanted stays a candidate and the joint score decides (ETD §8.10).
+  const rejectedNow = new Set(inputs.reactions.filter((x) => x.value === "no" && !x.participant).map((x) => x.dishId));
 
   const scored = candidates.eligible
     .filter((d) => !rejectedNow.has(d.id))
-    .map((d) => ({ dish: d, score: scoreDish(d, inputs) }))
+    .map((d) => ({ dish: d, score: together ? jointScore(d, inputs) : scoreDish(d, inputs) }))
     .sort(
       (a, b) =>
         b.score.utility - a.score.utility ||
@@ -137,11 +144,12 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
       appealScore: Math.round(score.utility * 1000) / 1000,
       fulfillmentStatus: eligibility.fulfillment,
       safety: eligibility.safety,
-      reasonCodes: reasonCodesFor(score, eligibility, deps, recentDishIds, tentative, varietyFrom),
+      reasonCodes: togetherCodes(reasonCodesFor(score, eligibility, deps, recentDishIds, tentative, varietyFrom), score, together),
       evidence: {
         likedSimilar: score.supportingLikes.slice(0, 2).map((s) => ({
           dishId: s.dishId,
           sharedAttributes: sharedAttributes(dish, deps.catalog.byId.get(s.dishId) as Dish),
+          ...(s.by ? { by: s.by } : {}),
         })),
         recentMealsConsidered: recent.length,
         varietyFrom,
@@ -168,6 +176,13 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
     inputDigest: inputDigest(session, deps),
     eligibleCount: candidates.eligible.length,
   };
+}
+
+/** In Together Mode, a like that both people gave together is a SHARED_SESSION_POSITIVE (R-011). */
+function togetherCodes(codes: ReasonCode[], score: ScoreBreakdown, together: boolean): ReasonCode[] {
+  if (!together) return codes;
+  const top = score.supportingLikes[0];
+  return codes.map((c) => (c === "CURRENT_SESSION_POSITIVE" && top && !top.by ? "SHARED_SESSION_POSITIVE" : c));
 }
 
 /** Variety evidence only for dishes that are genuinely a fresh change (low fatigue). */
@@ -259,6 +274,7 @@ export interface Readiness {
 }
 
 export function readiness(session: DiscoverySession, deps: EngineDeps): Readiness {
+  deps = depsForSession(session, deps);
   const effective = effectiveCardCount(session);
   const exhausted = selectNextCard(session, deps) === null;
   let promptReady = false;

@@ -89,14 +89,43 @@ export interface Explanation {
   text: string;
 }
 
-export function explainItem(item: RecommendationItem, catalog: Catalog, source: "reactions" | "quick_picks" = "reactions"): Explanation[] {
+/** Display names for Together Mode participants ("a" = phone owner, "b" = partner). */
+export interface ParticipantNames {
+  a: string;
+  b: string;
+}
+
+export function explainItem(
+  item: RecommendationItem,
+  catalog: Catalog,
+  source: "reactions" | "quick_picks" = "reactions",
+  names?: ParticipantNames,
+): Explanation[] {
   const out: Explanation[] = [];
   for (const code of item.reasonCodes) {
     switch (code) {
+      case "SHARED_SESSION_POSITIVE": {
+        const liked = item.evidence.likedSimilar[0];
+        if (!liked) break;
+        const name = catalog.byId.get(liked.dishId)?.name ?? "a dish";
+        if (liked.dishId === item.dishId) out.push({ code, text: "You both said yes to this." });
+        else if (liked.sharedAttributes.length > 0)
+          out.push({ code, text: `Like ${name}, which you both said yes to, it's ${liked.sharedAttributes.map(attributeWord).join(" and ")}.` });
+        else out.push({ code, text: `Similar to ${name}, which you both said yes to.` });
+        break;
+      }
       case "CURRENT_SESSION_POSITIVE": {
         const liked = item.evidence.likedSimilar[0];
         if (!liked) break;
         const name = catalog.byId.get(liked.dishId)?.name ?? "a dish";
+        const who = liked.by && names ? names[liked.by] : null;
+        if (who) {
+          if (liked.dishId === item.dishId) out.push({ code, text: `${who} wanted this one.` });
+          else if (liked.sharedAttributes.length > 0)
+            out.push({ code, text: `Like ${name}, which ${who} wanted, it's ${liked.sharedAttributes.map(attributeWord).join(" and ")}.` });
+          else out.push({ code, text: `Similar to ${name}, which ${who} wanted.` });
+          break;
+        }
         if (liked.dishId === item.dishId) {
           out.push({ code, text: `You said "sounds good" to this just now.` });
         } else if (liked.sharedAttributes.length > 0) {

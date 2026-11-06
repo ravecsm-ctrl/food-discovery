@@ -2,8 +2,8 @@
  * Pure helpers that turn engine state into comparable evaluation records and summaries (ENG-018).
  * Kept free of browser APIs so they are unit-testable.
  */
-import { ACTIVE_POLICY_IDS, type DiscoverySession, type RecommendationRun } from "@/engine";
-import type { EvalSessionRecord, ExposureRecord, RecommendationRunRecord } from "./local-store";
+import { ACTIVE_POLICY_IDS, type DiscoverySession, type Reaction, type RecommendationRun } from "@/engine";
+import type { EvalSessionRecord, ExposureRecord, ReactionCode, RecommendationRunRecord } from "./local-store";
 
 export interface CardTrace {
   selectionReason: string;
@@ -12,8 +12,15 @@ export interface CardTrace {
 
 export function exposureRecords(session: DiscoverySession, traces: Record<string, CardTrace>): ExposureRecord[] {
   return session.exposures.map((e) => {
-    const forCard = session.reactions.filter((r) => r.exposureId === e.exposureId);
-    const active = forCard.find((r) => r.active);
+    // One logical action per card: a shared value, or "a"/"b" = only that Together participant wanted it.
+    const groups = new Map<string, Reaction[]>();
+    for (const r of session.reactions.filter((x) => x.exposureId === e.exposureId)) groups.set(r.actionGroupId, [...(groups.get(r.actionGroupId) ?? []), r]);
+    const code = (g: Reaction[]): ReactionCode => {
+      const wanted = g.find((r) => r.participant && r.value === "yes");
+      return wanted?.participant ?? (g[0] as Reaction).value;
+    };
+    const all = [...groups.values()];
+    const active = all.find((g) => g.some((r) => r.active));
     const trace = traces[e.exposureId];
     return {
       position: e.position,
@@ -22,8 +29,8 @@ export function exposureRecords(session: DiscoverySession, traces: Record<string
       selectionReason: trace?.selectionReason ?? "unknown",
       q: trace?.q ?? null,
       selectionProbability: e.selectionProbability,
-      reaction: active?.value ?? null,
-      undoneReactions: forCard.filter((r) => !r.active).map((r) => r.value),
+      reaction: active ? code(active) : null,
+      undoneReactions: all.filter((g) => g !== active).map(code),
       withdrawn: e.withdrawn,
     };
   });
@@ -70,7 +77,9 @@ function median(xs: number[]): number | null {
 }
 
 /** Per-policy summary. Every rate exposes its numerator and denominator (PRRD §16.2). */
-export function summarize(records: EvalSessionRecord[]): PolicySummary[] {
+export function summarize(all: EvalSessionRecord[]): PolicySummary[] {
+  // Card-policy comparison uses solo sessions only; Together sessions rank with a different (joint) objective.
+  const records = all.filter((r) => r.mode !== "together");
   const ids = [...new Set([...ACTIVE_POLICY_IDS, ...records.map((r) => r.policyId)])];
   return ids.map((policyId) => {
     const rs = records.filter((r) => r.policyId === policyId);
