@@ -57,7 +57,7 @@ export function inputDigest(session: DiscoverySession, deps: EngineDeps): string
     r: activeReactions(session).map((r) => [r.dishId, r.value, r.strength, r.participant ?? ""]),
     md: session.mode,
     tm: session.togetherMeals.map((m) => [m.id, m.dishId, m.consumedAt, m.who]),
-    m: deps.user.confirmedMeals.map((m) => [m.id, m.dishId, m.consumedAt]),
+    m: deps.user.confirmedMeals.map((m) => [m.id, m.dishId, m.consumedAt, m.ownDish ? JSON.stringify(m.ownDish) : ""]),
     w: deps.user.stableAttributeWeights,
     n: deps.user.noveltyPreference,
     v: deps.user.varietySeeking ?? 1,

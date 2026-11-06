@@ -151,14 +151,17 @@ export function removeMeal(id: string): void {
 }
 
 /** Correct a logged meal (R-015). Taste fatigue is recomputed from meals on every use, so it updates at once (ENG-026). */
-export function updateMeal(id: string, patch: Partial<Pick<ConfirmedMeal, "dishId" | "unrecognizedName" | "consumedAt" | "timeApprox">>): void {
+export function updateMeal(id: string, patch: Partial<Pick<ConfirmedMeal, "dishId" | "unrecognizedName" | "consumedAt" | "timeApprox" | "ownDish">>): void {
   write(
     local,
     KEYS.meals,
     listMeals().map((m) => {
       if (m.id !== id) return m;
       const next = { ...m, ...patch };
-      if (next.dishId) next.unrecognizedName = null;
+      if (next.dishId) {
+        next.unrecognizedName = null;
+        next.ownDish = null; // a listed dish describes itself
+      }
       return next;
     }),
   );

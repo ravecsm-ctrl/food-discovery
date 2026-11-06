@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadCatalog } from "@/catalog";
-import { searchDishes } from "@/lib/dish-search";
+import { ownDishMatches, searchDishes } from "@/lib/dish-search";
 import {
   DEFAULT_CONSTRAINTS,
   RESTRICTION_KEYS,
@@ -15,6 +15,7 @@ import {
   currentExposure,
   effectiveCardCount,
   explainItem,
+  ownDishSummary,
   getPolicy,
   quickPicks,
   readiness,
@@ -25,6 +26,7 @@ import {
   undoLastReaction,
   type DiscoverySession,
   type EngineDeps,
+  type OwnDish,
   type ParticipantNames,
   type TogetherMeal,
   type ReactionValue,
@@ -49,6 +51,7 @@ import {
   type EvalSessionRecord,
   type RecommendationRunRecord,
 } from "@/lib/local-store";
+import { DescribeDish } from "./DescribeDish";
 import { DishArt } from "./DishArt";
 import { DishDetails, DishLabel, RESTRICTION_LABELS, SafetyNote } from "./DishInfo";
 import { RecentMealsStep } from "./RecentMealsStep";
@@ -371,13 +374,14 @@ export function DiscoveryApp() {
   );
 
   const confirmMeal = useCallback(
-    (ctx: OutcomeContext, dishId: string | null, unrecognizedName: string | null) => {
+    (ctx: OutcomeContext, dishId: string | null, unrecognizedName: string | null, ownDish: OwnDish | null = null) => {
       const mealId = newId();
       const at = nowIso();
       addMeal({
         id: mealId,
         dishId,
         unrecognizedName,
+        ownDish: dishId ? null : ownDish,
         consumedAt: at,
         confirmed: true,
         source: dishId === ctx.dishId ? "selection_confirmation" : "manual",
@@ -613,7 +617,7 @@ export function DiscoveryApp() {
         )}
 
         {phase === "other-meal" && outcome && (
-          <OtherMeal onCancel={() => setPhase(session ? "picked" : "home")} onConfirm={(dishId, name) => confirmMeal(outcome, dishId, name)} />
+          <OtherMeal onCancel={() => setPhase(session ? "picked" : "home")} onConfirm={(dishId, name, own) => confirmMeal(outcome, dishId, name, own)} />
         )}
 
         {phase === "rate" && outcome?.mealId && (
@@ -916,9 +920,30 @@ function Picked(props: {
   );
 }
 
-function OtherMeal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (dishId: string | null, name: string | null) => void }) {
+function OtherMeal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (dishId: string | null, name: string | null, ownDish: OwnDish | null) => void }) {
   const [q, setQ] = useState("");
+  const [describing, setDescribing] = useState<string | null>(null);
   const matches = searchDishes(catalog, q, 8);
+  const mine = useMemo(() => ownDishMatches(listMeals(), q), [q]);
+  if (describing) {
+    return (
+      <section className="flex flex-1 flex-col pt-4">
+        <h1 className="font-display text-3xl font-semibold">Describe {describing}</h1>
+        <div className="mt-3">
+          <DescribeDish
+            name={describing}
+            saveLabel="Log it"
+            onSave={(d) => onConfirm(null, describing, d)}
+            onSkip={() => onConfirm(null, describing, null)}
+            skipLabel="Skip — just log the name"
+          />
+        </div>
+        <button type="button" onClick={() => setDescribing(null)} className="mt-auto h-11 rounded-full text-sm text-muted">
+          Back
+        </button>
+      </section>
+    );
+  }
   return (
     <section className="flex flex-1 flex-col pt-4">
       <h1 className="font-display text-3xl font-semibold">What did you eat?</h1>
@@ -936,7 +961,7 @@ function OtherMeal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
       <ul className="mt-3 space-y-1.5">
         {matches.map((d) => (
           <li key={d.id}>
-            <button type="button" onClick={() => onConfirm(d.id, null)} className="flex w-full items-center gap-3 rounded-2xl bg-surface p-2 text-left ring-1 ring-line">
+            <button type="button" onClick={() => onConfirm(d.id, null, null)} className="flex w-full items-center gap-3 rounded-2xl bg-surface p-2 text-left ring-1 ring-line">
               <span className="h-11 w-11 overflow-hidden rounded-xl">
                 <DishArt dish={d} compact />
               </span>
@@ -944,10 +969,18 @@ function OtherMeal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: (
             </button>
           </li>
         ))}
+        {mine.map((m) => (
+          <li key={`own-${m.name}`}>
+            <button type="button" onClick={() => onConfirm(null, m.name, m.ownDish)} className="w-full rounded-2xl bg-surface p-3 text-left ring-1 ring-line">
+              <span className="font-medium">{m.name}</span>
+              <span className="block text-xs text-muted">Your dish · {ownDishSummary(m.ownDish)}</span>
+            </button>
+          </li>
+        ))}
       </ul>
-      {q.trim().length >= 2 && (
-        <button type="button" onClick={() => onConfirm(null, q.trim())} className="mt-3 h-12 rounded-full bg-surface-2 px-4 text-sm font-semibold">
-          Log &ldquo;{q.trim()}&rdquo; (kept private on this device)
+      {q.trim().length >= 2 && !mine.some((m) => m.name.toLowerCase() === q.trim().toLowerCase()) && (
+        <button type="button" onClick={() => setDescribing(q.trim())} className="mt-3 h-12 rounded-full bg-surface-2 px-4 text-sm font-semibold">
+          Log &ldquo;{q.trim()}&rdquo; — not in the list
         </button>
       )}
       <button type="button" onClick={onCancel} className="mt-auto h-11 rounded-full text-sm text-muted">

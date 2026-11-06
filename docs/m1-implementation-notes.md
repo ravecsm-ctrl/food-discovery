@@ -171,3 +171,12 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 - **"Not in our dish list yet"** (Your data): free-text meals grouped by name — the evidence for what to add next (and for whether AI categorization is worth building, see plan step 4). When a dish now exists for a name (exact name/alternate name), a **Link** button re-links those meals after the person taps it, so they start counting toward variety. Nothing changes automatically; the records stay private (PRRD §9.4).
 - Cuisine labels for multi-word cuisines display properly ("Middle Eastern").
 - Supabase reference data: `20261107000400_reference_catalog_v0_4_draft.sql` (v0.3 marked retired).
+
+## 10. Library step 2 — add your own dish (approved 2026-11-07)
+
+- When a food isn't in the dish list (recent meals, "I ate something else", or later from **Your data → Not in our dish list yet → Describe**), the person can describe it with fixed choices: cuisine, up to 2 main ingredients, cooking method, dish type, up to 3 flavours. Optional — "Skip" logs the name only, as before.
+- `src/engine/own-dish.ts` turns the description into catalog-vocabulary features; taste fatigue uses them (R-012), so a described kebab makes similar dishes count as recent. Undescribed free-text meals still only count as "a meal happened".
+- Typing a name you described before offers **"your dish"** instead of describing again.
+- **Privacy / catalog integrity (PRRD §9.4):** descriptions are private meal data; they never create catalog dishes, never make ingredient or allergen claims, and can't be used for hard exclusions. Only fixed slugs are accepted (validated on the device and in the database).
+- **Cloud:** migration `20261107000500_own_dish.sql` adds `meal_records.own_dish` (strict shape check; dropped when the meal names a listed dish); `save_meal` records description changes as corrections; `get_my_data` returns it. Sync compares descriptions in canonical order.
+- Plan step 4 (AI suggests the description) will pre-fill this same picker for confirmation.

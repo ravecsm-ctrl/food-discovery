@@ -122,6 +122,8 @@ export interface ConfirmedMeal {
   source: "selection_confirmation" | "manual" | "recall" | "synthetic";
   /** True when the time is an approximation ("last night"). */
   timeApprox?: boolean;
+  /** For a food not in the dish list: the person's own short description (see own-dish.ts). */
+  ownDish?: import("./own-dish.ts").OwnDish | null;
 }
 
 export interface UserModel {

@@ -402,3 +402,43 @@ describe("M3 Together Mode storage (PRRD J-03, R-011, R-017 · AT-013, AT-014)",
     expect((await myData(db, B)).sessions.map((s) => s.sessionId)).not.toContain(uuid(500));
   });
 });
+
+describe("library step 2: own described dishes", () => {
+  const kebab = { cuisine: "middle_eastern", mains: ["beef"], method: "grilled", type: "wraps", flavors: ["flavor:garlicky", "flavor:spiced"] };
+  const save = (id: string, extra: Record<string, unknown>) =>
+    db.as(A, "select public.save_meal($1, $2)", [rid(), JSON.stringify({ id, consumedAt: NOW, source: "manual", ...extra })]);
+
+  it("stores a private description with a free-text meal and returns it; corrections are recorded", async () => {
+    const id = uuid(700);
+    await save(id, { unrecognizedName: "Kebab", ownDish: kebab });
+    expect((await myData(db, A)).meals.find((m) => m.id === id)?.ownDish).toEqual(kebab);
+    await save(id, { unrecognizedName: "Kebab", ownDish: { ...kebab, method: "fried" } });
+    expect((await myData(db, A)).meals.find((m) => m.id === id)?.ownDish?.method).toBe("fried");
+    const [ev] = await db.admin<{ p: { descriptionChanged: boolean } }>("select payload as p from public.domain_events where event_type='meal_corrected' and aggregate_id=$1", [id]);
+    expect(ev!.p.descriptionChanged).toBe(true);
+  });
+
+  it("drops a description when the meal names a listed dish", async () => {
+    const id = uuid(701);
+    await save(id, { dishId: "dish-doner-kebab", ownDish: kebab });
+    expect((await myData(db, A)).meals.find((m) => m.id === id)?.ownDish).toBeUndefined();
+  });
+
+  it("rejects anything outside the fixed shape", async () => {
+    for (const bad of [
+      { ...kebab, secret: "x" },
+      { ...kebab, flavors: ["flavor:a", "flavor:b", "flavor:c", "flavor:d"] },
+      { ...kebab, mains: ["beef; drop table"] },
+      { ...kebab, flavors: ["peanut-free"] },
+      { ...kebab, cuisine: 42 },
+    ]) {
+      await expect(save(uuid(702), { unrecognizedName: "X", ownDish: bad })).rejects.toThrow(/ownDish/);
+    }
+  });
+
+  it("no catalog dish is created from a description (PRRD §9.4)", async () => {
+    const before = await db.admin("select count(*) from public.dish_variants");
+    await save(uuid(703), { unrecognizedName: "Lola's kebab", ownDish: kebab });
+    expect(await db.admin("select count(*) from public.dish_variants")).toEqual(before);
+  });
+});

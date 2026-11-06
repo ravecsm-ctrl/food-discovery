@@ -3,7 +3,7 @@
  * Matches the dish name, its alternate names (aliases), and cuisine, by whole word or word start,
  * and tolerates one typo in longer words ("shwarma" → Shawarma). Pure and deterministic.
  */
-import { cuisineName, type Catalog, type ConfirmedMeal, type Dish } from "@/engine";
+import { cleanOwnDish, cuisineName, type Catalog, type ConfirmedMeal, type Dish, type OwnDish } from "@/engine";
 
 export function normalize(s: string): string {
   return s
@@ -81,6 +81,8 @@ export interface UnlistedFood {
   lastAt: string;
   /** A dish now in the list that this name clearly refers to, if any. */
   match: Dish | null;
+  /** The person's own description (latest), if they described it. */
+  ownDish: OwnDish | null;
 }
 
 /** Foods logged by name because they weren't in the dish list — the evidence for what to add next. */
@@ -90,12 +92,35 @@ export function unlistedFoods(catalog: Catalog, meals: readonly ConfirmedMeal[])
     if (m.dishId || !m.unrecognizedName?.trim()) continue;
     const key = normalize(m.unrecognizedName);
     const g = groups.get(key);
+    const own = cleanOwnDish(m.ownDish);
     if (g) {
       g.mealIds.push(m.id);
-      if (m.consumedAt > g.lastAt) g.lastAt = m.consumedAt;
+      if (m.consumedAt >= g.lastAt) {
+        g.lastAt = m.consumedAt;
+        if (own) g.ownDish = own;
+      } else if (!g.ownDish && own) g.ownDish = own;
     } else {
-      groups.set(key, { name: m.unrecognizedName.trim(), mealIds: [m.id], lastAt: m.consumedAt, match: confidentMatch(catalog, m.unrecognizedName) });
+      groups.set(key, { name: m.unrecognizedName.trim(), mealIds: [m.id], lastAt: m.consumedAt, match: confidentMatch(catalog, m.unrecognizedName), ownDish: own });
     }
   }
   return [...groups.values()].sort((a, b) => b.mealIds.length - a.mealIds.length || b.lastAt.localeCompare(a.lastAt));
+}
+
+/** Your own described dishes whose name matches what you're typing (reuse instead of re-describing). */
+export function ownDishMatches(meals: readonly ConfirmedMeal[], query: string, limit = 3): Array<{ name: string; ownDish: OwnDish }> {
+  const q = normalize(query);
+  if (q.length < 2) return [];
+  const latest = new Map<string, { name: string; ownDish: OwnDish; at: string }>();
+  for (const m of meals) {
+    const own = m.dishId ? null : cleanOwnDish(m.ownDish);
+    if (!own || !m.unrecognizedName) continue;
+    const key = normalize(m.unrecognizedName);
+    const prev = latest.get(key);
+    if (!prev || m.consumedAt > prev.at) latest.set(key, { name: m.unrecognizedName.trim(), ownDish: own, at: m.consumedAt });
+  }
+  return [...latest.entries()]
+    .filter(([k]) => k === q || k.startsWith(q) || k.split(" ").some((w) => w.startsWith(q)))
+    .sort(([a], [b]) => Number(b === q) - Number(a === q) || a.localeCompare(b))
+    .slice(0, limit)
+    .map(([, v]) => ({ name: v.name, ownDish: v.ownDish }));
 }

@@ -9,7 +9,7 @@
  *   on both, differ → whichever side still matches base is stale; if both changed, this device wins.
  * Sessions are append-only and never deleted by sync. Dietary restrictions are never involved.
  */
-import type { ConfirmedMeal } from "@/engine";
+import { cleanOwnDish, type ConfirmedMeal } from "@/engine";
 import type { EvalSessionRecord } from "./local-store";
 
 export interface SyncLedger {
@@ -68,7 +68,9 @@ const ms = (iso: string) => {
 
 /** Content fingerprint of a meal (what a correction can change). */
 export function mealHash(m: ConfirmedMeal): string {
-  return fnv([m.dishId ?? "", m.dishId ? "" : (m.unrecognizedName ?? "").trim(), ms(m.consumedAt), m.timeApprox ? 1 : 0].join("|"));
+  // Canonical field order: the database may return JSON keys in a different order.
+  const own = m.dishId ? "" : JSON.stringify(cleanOwnDish(m.ownDish) ?? "");
+  return fnv([m.dishId ?? "", m.dishId ? "" : (m.unrecognizedName ?? "").trim(), ms(m.consumedAt), m.timeApprox ? 1 : 0, own].join("|"));
 }
 
 /** Content fingerprint of a session: the parts that only grow, ignoring float precision and timestamps of sync. */
@@ -173,6 +175,7 @@ function stripCloudMeal(m: ConfirmedMeal & { sourceSessionId?: string | null }):
     confirmed: true,
     source: m.source,
     timeApprox: m.timeApprox ?? false,
+    ...(m.dishId || !cleanOwnDish(m.ownDish) ? {} : { ownDish: cleanOwnDish(m.ownDish) }),
   };
 }
 

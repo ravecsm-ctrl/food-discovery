@@ -123,3 +123,24 @@ describe("fingerprints", () => {
     expect(sessionHash(s)).not.toBe(sessionHash(undone));
   });
 });
+
+describe("own described dishes (library step 2)", () => {
+  const kebab = { cuisine: "middle_eastern", mains: ["beef"], method: "grilled", type: "wraps", flavors: ["flavor:garlicky"] };
+  const reordered = { flavors: ["flavor:garlicky"], type: "wraps", method: "grilled", mains: ["beef"], cuisine: "middle_eastern" };
+
+  it("a new description on this phone is pushed; the same description in another key order is not a change", () => {
+    const base = ledgerAfter(U, local([meal(9, null)], []), "t");
+    const described = { ...meal(9, null), ownDish: kebab };
+    expect(planSync(local([described], []), cloud([meal(9, null)], []), base).pushMeals).toEqual([described]);
+    const synced = ledgerAfter(U, local([described], []), "t2");
+    const p = planSync(local([described], []), cloud([{ ...meal(9, null), ownDish: reordered as never }], []), synced);
+    expect(p.pushMeals).toEqual([]);
+    expect(p.pullMeals).toEqual([]);
+  });
+
+  it("pulls a description added on another device", () => {
+    const base = ledgerAfter(U, local([meal(9, null)], []), "t");
+    const p = planSync(local([meal(9, null)], []), cloud([{ ...meal(9, null), ownDish: kebab }], []), base);
+    expect(p.pullMeals[0]?.ownDish).toEqual(kebab);
+  });
+});

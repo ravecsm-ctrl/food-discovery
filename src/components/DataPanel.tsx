@@ -22,7 +22,10 @@ import { clearAllLocalData, getProfile, getRestrictions, listMeals, onDataChange
 import { detachBeforeLocalWipe } from "@/lib/cloud-sync";
 import { CloudAccount } from "./CloudAccount";
 import { MealEditor } from "./MealEditor";
-import { unlistedFoods } from "@/lib/dish-search";
+import { unlistedFoods, type UnlistedFood } from "@/lib/dish-search";
+import { ownDishSummary } from "@/engine";
+import { DescribeDish } from "./DescribeDish";
+import { Sheet } from "./Sheet";
 import { relativeWhen } from "@/lib/recent-meals";
 
 const catalog = loadCatalog();
@@ -48,6 +51,7 @@ export function DataPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [editing, setEditing] = useState<ConfirmedMeal | null>(null);
+  const [describing, setDescribing] = useState<UnlistedFood | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => {
@@ -199,7 +203,7 @@ export function DataPanel() {
           <h2 id="unlisted" className="text-lg font-semibold">
             Not in our dish list yet
           </h2>
-          <p className="text-sm text-muted">Foods you logged by name. They&apos;re kept privately but can&apos;t shape suggestions until they match a dish.</p>
+          <p className="text-sm text-muted">Foods you logged by name, kept privately. Describe them (a few taps) or link them to a dish so they count toward variety.</p>
           <ul className="mt-2 space-y-1.5">
             {unlisted.map((u) => (
               <li key={u.name} className="flex items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 text-sm ring-1 ring-line">
@@ -207,9 +211,19 @@ export function DataPanel() {
                   <span className="block truncate font-medium">{u.name}</span>
                   <span className="text-xs text-muted">
                     {u.mealIds.length} meal{u.mealIds.length === 1 ? "" : "s"}
-                    {u.match ? ` · now in the list as ${u.match.name}` : ""}
+                    {u.match ? ` · now in the list as ${u.match.name}` : u.ownDish ? ` · ${ownDishSummary(u.ownDish)}` : " · not described"}
                   </span>
                 </span>
+                {!u.match && (
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-xs font-semibold ring-1 ring-line"
+                    aria-label={`${u.ownDish ? "Edit description of" : "Describe"} ${u.name}`}
+                    onClick={() => setDescribing(u)}
+                  >
+                    {u.ownDish ? "Edit" : "Describe"}
+                  </button>
+                )}
                 {u.match && (
                   <button
                     type="button"
@@ -227,6 +241,23 @@ export function DataPanel() {
               </li>
             ))}
           </ul>
+          <Sheet open={describing !== null} onClose={() => setDescribing(null)} title={`Describe ${describing?.name ?? ""}`}>
+            {describing && (
+              <DescribeDish
+                key={describing.name}
+                name={describing.name}
+                initial={describing.ownDish}
+                onSave={(d) => {
+                  for (const id of describing.mealIds) updateMeal(id, { ownDish: d });
+                  setMessage({ kind: "ok", text: `Saved. ${describing.name} now counts toward variety.` });
+                  setDescribing(null);
+                  refresh();
+                }}
+                onSkip={() => setDescribing(null)}
+                skipLabel="Cancel"
+              />
+            )}
+          </Sheet>
         </section>
       )}
 

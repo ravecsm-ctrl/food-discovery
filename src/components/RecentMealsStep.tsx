@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { loadCatalog } from "@/catalog";
-import { searchDishes } from "@/lib/dish-search";
-import type { ConfirmedMeal } from "@/engine";
+import { ownDishMatches, searchDishes } from "@/lib/dish-search";
+import { ownDishSummary, type ConfirmedMeal, type OwnDish } from "@/engine";
 import { addMeal, listMeals, removeMeal } from "@/lib/local-store";
 import { WHEN_LABELS, recentMeals, relativeWhen, whenToIso, type WhenChoice } from "@/lib/recent-meals";
+import { DescribeDish } from "./DescribeDish";
 import { DishArt } from "./DishArt";
 
 const catalog = loadCatalog();
@@ -18,7 +19,8 @@ const catalog = loadCatalog();
 export function RecentMealsStep({ onContinue, onBack }: { onContinue: () => void; onBack: () => void }) {
   const [meals, setMeals] = useState<ConfirmedMeal[]>([]);
   const [q, setQ] = useState("");
-  const [picked, setPicked] = useState<{ dishId: string | null; name: string } | null>(null);
+  /** ownDish: undefined = not described yet (ask), null = skipped, object = description. */
+  const [picked, setPicked] = useState<{ dishId: string | null; name: string; ownDish?: OwnDish | null } | null>(null);
 
   const refresh = () => setMeals(recentMeals(listMeals(), new Date()));
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -29,6 +31,7 @@ export function RecentMealsStep({ onContinue, onBack }: { onContinue: () => void
     if (t.length < 1) return [];
     return searchDishes(catalog, t, 6);
   }, [q]);
+  const mine = useMemo(() => ownDishMatches(listMeals(), q), [q]);
 
   const add = (when: WhenChoice) => {
     if (!picked) return;
@@ -36,6 +39,7 @@ export function RecentMealsStep({ onContinue, onBack }: { onContinue: () => void
       id: crypto.randomUUID(),
       dishId: picked.dishId,
       unrecognizedName: picked.dishId ? null : picked.name,
+      ownDish: picked.dishId ? null : (picked.ownDish ?? null),
       consumedAt: whenToIso(when, new Date()),
       confirmed: true,
       source: "recall",
@@ -114,12 +118,31 @@ export function RecentMealsStep({ onContinue, onBack }: { onContinue: () => void
                 </li>
               ))}
             </ul>
-            {q.trim().length >= 2 && !matches.some((d) => d.name.toLowerCase() === q.trim().toLowerCase()) && (
+            {mine.length > 0 && (
+              <ul className="mt-1 space-y-1" aria-label="Your own dishes">
+                {mine.map((m) => (
+                  <li key={m.name}>
+                    <button type="button" onClick={() => setPicked({ dishId: null, name: m.name, ownDish: m.ownDish })} className="w-full rounded-xl p-1.5 text-left">
+                      <span className="font-medium">{m.name}</span> <span className="text-xs text-muted">· your dish · {ownDishSummary(m.ownDish)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {q.trim().length >= 2 && !matches.some((d) => d.name.toLowerCase() === q.trim().toLowerCase()) && !mine.some((m) => m.name.toLowerCase() === q.trim().toLowerCase()) && (
               <button type="button" onClick={() => setPicked({ dishId: null, name: q.trim() })} className="mt-2 rounded-full bg-surface-2 px-4 py-2 text-sm font-semibold">
                 Use &ldquo;{q.trim()}&rdquo;
               </button>
             )}
           </>
+        ) : picked.ownDish === undefined && !picked.dishId ? (
+          <DescribeDish
+            name={picked.name}
+            saveLabel="Next"
+            onSave={(d) => setPicked({ ...picked, ownDish: d })}
+            onSkip={() => setPicked({ ...picked, ownDish: null })}
+            skipLabel="Skip — just log the name"
+          />
         ) : (
           <div>
             <p className="text-sm font-semibold">When did you have {picked.name}?</p>
@@ -130,7 +153,12 @@ export function RecentMealsStep({ onContinue, onBack }: { onContinue: () => void
                 </button>
               ))}
             </div>
-            {!picked.dishId && <p className="mt-2 text-xs text-muted">Not in our dish list yet — it&apos;s saved privately and counts as a meal, but can&apos;t shape suggestions.</p>}
+            {!picked.dishId &&
+              (picked.ownDish ? (
+                <p className="mt-2 text-xs text-muted">Your dish: {ownDishSummary(picked.ownDish)}. Saved privately; counts toward variety.</p>
+              ) : (
+                <p className="mt-2 text-xs text-muted">Not in our dish list yet — it&apos;s saved privately and counts as a meal, but can&apos;t shape suggestions.</p>
+              ))}
             <button type="button" onClick={() => setPicked(null)} className="mt-2 text-sm text-muted">
               Cancel
             </button>

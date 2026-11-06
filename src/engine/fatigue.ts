@@ -13,6 +13,10 @@
  */
 import { clamp } from "./similarity.ts";
 import type { Catalog, ConfirmedMeal, Dish } from "./types.ts";
+import { cleanOwnDish, ownDishFeatures } from "./own-dish.ts";
+
+/** What fatigue needs from a dish: catalog dishes, or a person's own described dish (no style). */
+type FatigueDish = Pick<Dish, "attributes"> & { cuisine: string | null; style?: Dish["style"] };
 
 export interface FatigueConfig {
   enabled: boolean;
@@ -59,8 +63,12 @@ function kindOf(attr: string): string {
 }
 
 /** Fatigable attributes of a dish with their strengths. */
-export function fatigueFeatures(dish: Dish, cfg: FatigueConfig): Array<[string, number]> {
-  const all: Array<[string, number]> = [...Object.entries(dish.attributes), [`cuisine:${dish.cuisine}`, 1], [`style:${dish.style}`, 1]];
+export function fatigueFeatures(dish: FatigueDish, cfg: FatigueConfig): Array<[string, number]> {
+  const all: Array<[string, number]> = [
+    ...Object.entries(dish.attributes),
+    ...(dish.cuisine ? ([[`cuisine:${dish.cuisine}`, 1]] as Array<[string, number]>) : []),
+    ...(dish.style ? ([[`style:${dish.style}`, 1]] as Array<[string, number]>) : []),
+  ];
   return all.filter(([a, x]) => x > 0 && (cfg.kindWeights[kindOf(a)] ?? 0) > 0 && !cfg.exempt.includes(a));
 }
 
@@ -82,8 +90,9 @@ export function recentLoad(catalog: Catalog, meals: readonly ConfirmedMeal[], no
     if (Number.isNaN(age) || age < 0 || age > cfg.windowDays * 24) continue;
     seen.add(m.id);
     n++;
-    const dish = m.dishId ? catalog.byId.get(m.dishId) : undefined;
-    if (!dish) continue; // unrecognized meal: counts toward coverage, no attribute evidence
+    const own = m.dishId ? null : cleanOwnDish(m.ownDish);
+    const dish: FatigueDish | undefined = m.dishId ? catalog.byId.get(m.dishId) : own ? ownDishFeatures(own) : undefined;
+    if (!dish) continue; // unrecognized, undescribed meal: counts toward coverage, no attribute evidence
     const w = Math.exp((-Math.LN2 * age) / cfg.halfLifeHours);
     for (const [a, x] of fatigueFeatures(dish, cfg)) load.set(a, (load.get(a) ?? 0) + w * x);
   }

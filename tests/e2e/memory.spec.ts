@@ -61,6 +61,7 @@ test("a free-text meal is kept privately but does not invent quick picks", async
   await page.getByRole("button", { name: "Start discovering" }).click();
   await page.getByPlaceholder("e.g. Adobo, ramen, pizza").fill("Lola's special stew");
   await page.getByRole("button", { name: /Use “Lola's special stew”/ }).click();
+  await page.getByRole("button", { name: "Skip — just log the name" }).click(); // describing is optional
   await page.getByRole("button", { name: "Last night" }).click();
   await page.getByRole("button", { name: "Show me ideas" }).click();
   await expect(page.getByTestId("food-card")).toBeVisible(); // no grounded picks → straight to cards
