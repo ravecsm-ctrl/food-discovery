@@ -164,3 +164,25 @@ test("Together Mode: vertical drags never save favourites or hides", async ({ pa
   await expect(page.getByTestId("food-card")).toHaveAttribute("data-dish-id", id as string);
   expect(await prefs(page)).toEqual([]);
 });
+
+test("a dish with a photo shows its credit on the card and the full credit in Details", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("mood-summary").getByRole("button").first().click();
+  const picker = page.getByTestId("mood-picker");
+  await picker.getByRole("button", { name: "Filipino" }).click();
+  await picker.getByRole("button", { name: "Soup", exact: true }).click();
+  await picker.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Start discovering" }).click();
+  await page.getByRole("button", { name: "Skip — start swiping" }).click();
+  for (let i = 0; i < 10 && (await cardId(page)) !== "dish-bulalo"; i++) await page.getByRole("button", { name: "Not tonight" }).click();
+  expect(await cardId(page)).toBe("dish-bulalo");
+  const card = page.getByTestId("food-card");
+  await expect(card.getByTestId("photo-credit")).toHaveText("Photo: Obsidian Soul · CC0");
+  const img = card.locator("img");
+  await expect(img).toHaveAttribute("src", /\/photos\/dish-bulalo\.jpg$/);
+  expect(await img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  await card.getByRole("button", { name: "Details about Bulalo" }).click();
+  const details = page.getByTestId("photo-details");
+  await expect(details).toContainText("Photo by Obsidian Soul");
+  await expect(details.getByRole("link", { name: "Wikimedia Commons" })).toHaveAttribute("href", /commons\.wikimedia\.org\/wiki\/File:/);
+});

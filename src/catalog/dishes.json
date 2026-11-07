@@ -6,13 +6,14 @@
     "reviewStatus": "pending_human_review",
     "note": "Prototype dataset authored for M1 engineering tests. Sensory attributes are editorial estimates of a typical preparation, not measurements. Ingredient claims describe a generic dish, not any specific recipe or restaurant item. 'confirmed_present' is used only for ingredients that define the dish name; all others are 'possible'; unlisted ingredients are unknown. No absence or allergen-safety claims are made.",
     "styleNote": "Style labels (comfort, light_fresh, hearty, street_food, rich_indulgent, sharing) are editorial judgments of how a dish is typically eaten, not facts; review with the catalog.",
-    "media": "No licensed photographs. Cards use clearly labelled illustration placeholders."
+    "media": "Some dishes have rights-cleared photos from Wikimedia Commons (free licences, credit shown, provenance recorded per dish, resized copies kept with the app). All others use clearly labelled illustration placeholders."
   },
   "dishes": [
     {
       "id": "dish-chicken-adobo", "familyId": "adobo", "name": "Chicken Adobo", "cuisine": "filipino", "style": "comfort",
       "description": "Chicken braised low and slow in vinegar, soy sauce, garlic and bay leaf.",
       "tags": ["savory", "tangy", "garlicky"], "richness": 0.6, "recognizability": 1, "illustration": "🍗",
+      "photo": {"file": "photos/dish-chicken-adobo.jpg", "source": "https://commons.wikimedia.org/wiki/File:Chicken_adobo.jpg", "author": "dbgg1979 on flickr", "license": "CC BY 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/2.0"},
       "aliases": ["adobo", "adobong manok"],
       "attributes": { "ingredient:chicken": 1, "ingredient:rice": 0.6, "method:braised": 1, "flavor:savory": 0.9, "flavor:sour": 0.6, "flavor:garlicky": 0.8, "texture:tender": 0.8, "texture:saucy": 0.6, "structure:rice_meal": 1 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
@@ -37,6 +38,7 @@
       "id": "dish-pork-sinigang", "familyId": "sinigang", "name": "Pork Sinigang", "cuisine": "filipino", "style": "comfort",
       "description": "Pork ribs simmered in a sour tamarind broth with radish and greens.",
       "tags": ["sour", "brothy", "hearty"], "richness": 0.45, "recognizability": 1, "illustration": "🍲",
+      "photo": {"file": "photos/dish-pork-sinigang.jpg", "source": "https://commons.wikimedia.org/wiki/File:Sinigang_na_Baboy_DSCF4234.jpg", "author": "Joy D. Ganaden", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["sinigang na baboy", "sinigang"],
       "attributes": { "ingredient:pork": 1, "ingredient:vegetables": 0.8, "method:simmered": 1, "flavor:sour": 1, "flavor:savory": 0.7, "texture:brothy": 1, "texture:tender": 0.5, "structure:soup": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "fish", "presence": "possible" }]
@@ -62,6 +64,7 @@
       "id": "dish-pork-sisig", "familyId": "sisig", "name": "Pork Sisig", "cuisine": "filipino", "style": "sharing",
       "description": "Chopped grilled pork with onions, chili and calamansi, served sizzling.",
       "tags": ["savory", "crispy", "rich"], "richness": 0.85, "recognizability": 1, "illustration": "🥘",
+      "photo": {"file": "photos/dish-pork-sisig.jpg", "source": "https://commons.wikimedia.org/wiki/File:Sizzling_Sisig_at_La_Herencia_Comida.jpg", "author": "Ymirazudis", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["sisig", "sizzling sisig"],
       "mealTimes": { "late_night": 0.75, "lunch": 0.3 },
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:grilled": 0.6, "method:fried": 0.6, "flavor:savory": 1, "flavor:sour": 0.4, "flavor:spicy": 0.4, "texture:crispy": 0.7, "texture:chewy": 0.4, "structure:sizzling_plate": 1 },
@@ -71,6 +74,7 @@
       "id": "dish-kare-kare", "familyId": "kare-kare", "name": "Kare-Kare", "cuisine": "filipino", "style": "sharing",
       "description": "Oxtail and vegetables in a thick peanut sauce, served with shrimp paste.",
       "tags": ["nutty", "rich", "saucy"], "richness": 0.85, "recognizability": 0.9, "illustration": "🥜",
+      "photo": {"file": "photos/dish-kare-kare.jpg", "source": "https://commons.wikimedia.org/wiki/File:Bagnet_Kare_Kare.jpg", "author": "Lyraauce", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["karekare", "oxtail stew"],
       "attributes": { "ingredient:beef": 1, "ingredient:peanut": 0.9, "ingredient:vegetables": 0.6, "ingredient:rice": 0.5, "method:braised": 1, "flavor:savory": 0.7, "flavor:nutty": 1, "texture:saucy": 1, "texture:tender": 0.7, "structure:stew": 1 },
       "ingredients": [{ "key": "beef", "presence": "possible" }, { "key": "peanut", "presence": "confirmed_present" }, { "key": "shellfish", "presence": "possible" }]
@@ -79,6 +83,7 @@
       "id": "dish-lechon-kawali", "familyId": "lechon-kawali", "name": "Lechon Kawali", "cuisine": "filipino", "style": "rich_indulgent",
       "description": "Deep-fried pork belly with crackling skin and a tangy liver or vinegar dip.",
       "tags": ["crispy", "rich", "savory"], "richness": 0.95, "recognizability": 1, "illustration": "🍖",
+      "photo": {"file": "photos/dish-lechon-kawali.jpg", "source": "https://commons.wikimedia.org/wiki/File:Lechon_Kawali.jpg", "author": "punctuated", "license": "CC BY 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/2.0"},
       "aliases": ["lechon", "crispy pork belly"],
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:fried": 1, "flavor:savory": 0.9, "texture:crispy": 1, "texture:tender": 0.4, "structure:rice_meal": 0.8 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }]
@@ -87,6 +92,7 @@
       "id": "dish-pancit-canton", "familyId": "pancit", "name": "Pancit Canton", "cuisine": "filipino", "style": "sharing",
       "description": "Stir-fried egg noodles with vegetables, meat and a squeeze of calamansi.",
       "tags": ["savory", "noodles", "light"], "richness": 0.45, "recognizability": 1, "illustration": "🍝",
+      "photo": {"file": "photos/dish-pancit-canton.jpg", "source": "https://commons.wikimedia.org/wiki/File:Pancit_canton_with_Spam_luncheon_meat_09.jpg", "author": "FBenjr123", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["canton", "pancit"],
       "mealTimes": { "merienda": 0.75, "breakfast": -0.2 },
       "attributes": { "ingredient:wheat_noodles": 1, "ingredient:vegetables": 0.7, "ingredient:pork": 0.4, "ingredient:chicken": 0.3, "method:stir_fried": 1, "flavor:savory": 0.9, "texture:chewy": 0.6, "structure:noodles": 1 },
@@ -96,6 +102,7 @@
       "id": "dish-bulalo", "familyId": "bulalo", "name": "Bulalo", "cuisine": "filipino", "style": "hearty",
       "description": "Beef shank and bone marrow simmered into a clear, deeply beefy soup.",
       "tags": ["brothy", "beefy", "hearty"], "richness": 0.7, "recognizability": 0.9, "illustration": "🦴",
+      "photo": {"file": "photos/dish-bulalo.jpg", "source": "https://commons.wikimedia.org/wiki/File:Bulalo_(Philippines).jpg", "author": "Obsidian Soul", "license": "CC0", "changes": "Resized; shown cropped to fit"},
       "attributes": { "ingredient:beef": 1, "ingredient:vegetables": 0.5, "method:simmered": 1, "flavor:savory": 0.9, "texture:brothy": 1, "texture:tender": 0.6, "structure:soup": 1 },
       "ingredients": [{ "key": "beef", "presence": "confirmed_present" }, { "key": "fish", "presence": "possible" }]
     },
@@ -111,6 +118,7 @@
       "id": "dish-chicken-inasal", "familyId": "inasal", "name": "Chicken Inasal", "cuisine": "filipino", "style": "street_food",
       "description": "Charcoal-grilled chicken marinated in calamansi, lemongrass and annatto.",
       "tags": ["smoky", "citrusy", "juicy"], "richness": 0.5, "recognizability": 1, "illustration": "🔥",
+      "photo": {"file": "photos/dish-chicken-inasal.jpg", "source": "https://commons.wikimedia.org/wiki/File:Chicken_inasal_with_rice.jpg", "author": "Roderick Suñaz Sumalinog", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["inasal", "grilled chicken"],
       "mealTimes": { "lunch": 0.65 },
       "attributes": { "ingredient:chicken": 1, "ingredient:rice": 0.7, "method:grilled": 1, "flavor:smoky": 0.8, "flavor:savory": 0.7, "flavor:aromatic": 0.6, "texture:tender": 0.6, "structure:grilled_plate": 1 },
@@ -137,6 +145,7 @@
       "id": "dish-tonkotsu-ramen", "familyId": "ramen", "name": "Tonkotsu Ramen", "cuisine": "japanese", "style": "rich_indulgent",
       "description": "Creamy pork-bone broth with springy noodles, chashu and a soft egg.",
       "tags": ["rich", "brothy", "umami"], "richness": 0.9, "recognizability": 1, "illustration": "🍜",
+      "photo": {"file": "photos/dish-tonkotsu-ramen.jpg", "source": "https://commons.wikimedia.org/wiki/File:Tonkotsu_Ramen_Special,_Hakata_Choten,_Paris_001.jpg", "author": "Guilhem Vellut from Paris, France", "license": "CC BY 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/2.0"},
       "aliases": ["ramen"],
       "attributes": { "ingredient:pork": 0.8, "ingredient:wheat_noodles": 1, "ingredient:egg": 0.6, "method:simmered": 1, "flavor:umami": 1, "flavor:savory": 0.9, "texture:brothy": 1, "texture:creamy": 0.5, "texture:chewy": 0.6, "structure:noodle_soup": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "sesame", "presence": "possible" }]
@@ -184,6 +193,7 @@
       "id": "dish-margherita-pizza", "familyId": "pizza", "name": "Margherita Pizza", "cuisine": "italian", "style": "sharing",
       "description": "Thin baked crust with tomato, melted mozzarella and fresh basil.",
       "tags": ["cheesy", "tomatoey", "herby"], "richness": 0.65, "recognizability": 1, "illustration": "🍕",
+      "photo": {"file": "photos/dish-margherita-pizza.jpg", "source": "https://commons.wikimedia.org/wiki/File:Pizza-napoletana.jpg", "author": "Fabryx98", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["pizza"],
       "attributes": { "ingredient:bread_dough": 1, "ingredient:cheese": 0.9, "ingredient:tomato": 0.8, "method:baked": 1, "flavor:savory": 0.8, "flavor:herbal": 0.5, "texture:chewy": 0.6, "texture:crispy": 0.4, "structure:pizza": 1 },
       "ingredients": [{ "key": "gluten", "presence": "possible" }, { "key": "dairy", "presence": "possible" }]
@@ -200,6 +210,7 @@
       "id": "dish-spaghetti-carbonara", "familyId": "carbonara", "name": "Spaghetti Carbonara", "cuisine": "italian", "style": "rich_indulgent",
       "description": "Spaghetti coated in a silky egg-and-cheese sauce with crisp cured pork and black pepper.",
       "tags": ["creamy", "peppery", "rich"], "richness": 0.9, "recognizability": 0.9, "illustration": "🍝",
+      "photo": {"file": "photos/dish-spaghetti-carbonara.jpg", "source": "https://commons.wikimedia.org/wiki/File:Espaguetis_carbonara.jpg", "author": "Javier Somoza", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["carbonara"],
       "attributes": { "ingredient:pasta": 1, "ingredient:egg": 0.8, "ingredient:cheese": 0.8, "ingredient:pork": 0.5, "method:boiled": 0.7, "flavor:savory": 0.9, "flavor:peppery": 0.6, "texture:creamy": 0.9, "structure:pasta": 1 },
       "ingredients": [{ "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "pork", "presence": "possible" }]
@@ -237,6 +248,7 @@
       "id": "dish-bibimbap", "familyId": "bibimbap", "name": "Bibimbap", "cuisine": "korean", "style": "light_fresh",
       "description": "Rice bowl topped with seasoned vegetables, beef, a fried egg and gochujang.",
       "tags": ["colorful", "spicy", "fresh"], "richness": 0.5, "recognizability": 0.8, "illustration": "🥗",
+      "photo": {"file": "photos/dish-bibimbap.jpg", "source": "https://commons.wikimedia.org/wiki/File:Korean.food-Bibimbap-02.jpg", "author": "abex (a flickr user)", "license": "CC BY-SA 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"},
       "attributes": { "ingredient:rice": 1, "ingredient:vegetables": 0.9, "ingredient:beef": 0.5, "ingredient:egg": 0.6, "method:stir_fried": 0.5, "flavor:spicy": 0.5, "flavor:savory": 0.7, "flavor:fresh": 0.5, "texture:crunchy": 0.5, "texture:soft": 0.4, "structure:rice_bowl": 1 },
       "ingredients": [{ "key": "egg", "presence": "possible" }, { "key": "beef", "presence": "possible" }, { "key": "sesame", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -302,6 +314,7 @@
       "id": "dish-xiaolongbao", "familyId": "dumplings", "name": "Xiaolongbao", "cuisine": "chinese", "style": "sharing",
       "description": "Delicate steamed soup dumplings filled with pork and hot broth.",
       "tags": ["juicy", "delicate", "savory"], "richness": 0.6, "recognizability": 0.7, "illustration": "🥟",
+      "photo": {"file": "photos/dish-xiaolongbao.jpg", "source": "https://commons.wikimedia.org/wiki/File:Xiao_Long_Bao_by_Junhao!.jpg", "author": "Junhao!", "license": "CC BY 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/2.0"},
       "aliases": ["xlb", "soup dumplings"],
       "mealTimes": { "lunch": 0.6, "merienda": 0.6 },
       "attributes": { "ingredient:pork": 1, "ingredient:bread_dough": 0.6, "method:steamed": 1, "flavor:savory": 0.9, "flavor:umami": 0.6, "texture:soft": 0.8, "texture:brothy": 0.5, "structure:dumplings": 1 },
@@ -372,6 +385,7 @@
       "id": "dish-pad-thai", "familyId": "pad-thai", "name": "Shrimp Pad Thai", "cuisine": "thai", "style": "street_food",
       "description": "Stir-fried rice noodles with shrimp, tamarind, egg, bean sprouts and crushed peanuts.",
       "tags": ["sweet-sour", "nutty", "chewy"], "richness": 0.6, "recognizability": 1, "illustration": "🦐",
+      "photo": {"file": "photos/dish-pad-thai.jpg", "source": "https://commons.wikimedia.org/wiki/File:Phat_Thai_kung_Chang_Khien_street_stall.jpg", "author": "Takeaway", "license": "CC BY-SA 3.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"},
       "aliases": ["pad thai", "phad thai"],
       "attributes": { "ingredient:shrimp": 1, "ingredient:rice_noodles": 1, "ingredient:egg": 0.5, "ingredient:peanut": 0.5, "method:stir_fried": 1, "flavor:sweet": 0.5, "flavor:sour": 0.5, "flavor:savory": 0.7, "flavor:nutty": 0.4, "texture:chewy": 0.8, "structure:noodles": 1 },
       "ingredients": [{ "key": "shellfish", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "peanut", "presence": "possible" }, { "key": "fish", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
@@ -396,6 +410,7 @@
       "id": "dish-hainanese-chicken-rice", "familyId": "chicken-rice", "name": "Hainanese Chicken Rice", "cuisine": "singaporean", "style": "comfort",
       "description": "Silky poached chicken over fragrant chicken-fat rice, with chili and ginger sauces.",
       "tags": ["gingery", "delicate", "comforting"], "richness": 0.5, "recognizability": 0.9, "illustration": "🐔",
+      "photo": {"file": "photos/dish-hainanese-chicken-rice.jpg", "source": "https://commons.wikimedia.org/wiki/File:Hainanese_chicken_rice.jpg", "author": "Misaochan", "license": "CC BY 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/4.0"},
       "aliases": ["chicken rice"],
       "attributes": { "ingredient:chicken": 1, "ingredient:rice": 1, "method:poached": 1, "flavor:savory": 0.7, "flavor:gingery": 0.6, "flavor:aromatic": 0.5, "texture:tender": 0.9, "texture:soft": 0.5, "structure:rice_meal": 1 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }, { "key": "sesame", "presence": "possible" }]
@@ -471,6 +486,7 @@
       "id": "dish-crispy-pata", "familyId": null, "name": "Crispy Pata", "cuisine": "filipino", "style": "sharing",
       "description": "Deep-fried pork knuckle with crackling skin, served with a soy-vinegar dip.",
       "tags": ["crackling", "rich", "salty"], "richness": 0.95, "recognizability": 0.9, "illustration": "🍖",
+      "photo": {"file": "photos/dish-crispy-pata.jpg", "source": "https://commons.wikimedia.org/wiki/File:Crispy_Pata_Pork.jpg", "author": "Cyapoj", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "attributes": { "ingredient:pork": 1, "method:fried": 1, "method:boiled": 0.4, "flavor:savory": 1, "flavor:sour": 0.3, "texture:crispy": 1, "texture:tender": 0.6, "structure:fried_plate": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -478,6 +494,7 @@
       "id": "dish-lumpiang-shanghai", "familyId": "lumpia", "name": "Lumpiang Shanghai", "cuisine": "filipino", "style": "sharing",
       "description": "Thin fried spring rolls filled with seasoned ground pork, with sweet chili dip.",
       "tags": ["crispy", "savory"], "richness": 0.6, "recognizability": 1, "illustration": "🥢",
+      "photo": {"file": "photos/dish-lumpiang-shanghai.jpg", "source": "https://commons.wikimedia.org/wiki/File:Lumpiang_Shanghai_sa_Bilao.jpg", "author": "ShmilyDigital", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["lumpia", "spring rolls"],
       "mealTimes": { "lunch": 0.35, "merienda": 0.7 },
       "attributes": { "ingredient:pork": 0.8, "ingredient:vegetables": 0.4, "ingredient:bread_dough": 0.4, "method:fried": 1, "flavor:savory": 1, "flavor:sweet": 0.3, "texture:crispy": 1, "texture:crunchy": 0.5, "structure:rolls": 1 },
@@ -517,6 +534,7 @@
       "id": "dish-pancit-palabok", "familyId": "pancit", "name": "Pancit Palabok", "cuisine": "filipino", "style": "comfort",
       "description": "Rice noodles under a garlicky orange shrimp sauce, topped with egg and chicharon.",
       "tags": ["savory", "garlicky"], "richness": 0.6, "recognizability": 0.9, "illustration": "🍜",
+      "photo": {"file": "photos/dish-pancit-palabok.jpg", "source": "https://commons.wikimedia.org/wiki/File:Pancit_palabok.jpg", "author": "bingbing from Quezon City, Philippines", "license": "CC BY 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/2.0"},
       "aliases": ["palabok"],
       "mealTimes": { "merienda": 0.8, "dinner": 0.3 },
       "attributes": { "ingredient:rice_noodles": 1, "ingredient:shrimp": 0.6, "ingredient:egg": 0.4, "ingredient:pork": 0.3, "method:boiled": 0.6, "flavor:savory": 1, "flavor:umami": 0.7, "flavor:garlicky": 0.5, "texture:saucy": 0.8, "texture:soft": 0.6, "structure:noodles": 1 },
@@ -526,6 +544,7 @@
       "id": "dish-bicol-express", "familyId": null, "name": "Bicol Express", "cuisine": "filipino", "style": "rich_indulgent",
       "description": "Pork cooked in coconut milk with plenty of chili and shrimp paste.",
       "tags": ["spicy", "creamy"], "richness": 0.85, "recognizability": 0.9, "illustration": "🌶️",
+      "photo": {"file": "photos/dish-bicol-express.jpg", "source": "https://commons.wikimedia.org/wiki/File:Bicol_Express_at_La_Herencia_Comida.jpg", "author": "Ymirazudis", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "attributes": { "ingredient:pork": 1, "ingredient:coconut_milk": 1, "ingredient:rice": 0.6, "method:simmered": 1, "flavor:spicy": 0.9, "flavor:savory": 1, "texture:creamy": 1, "texture:tender": 0.6, "structure:rice_meal": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "shellfish", "presence": "possible" }, { "key": "fish", "presence": "possible" }]
     },
@@ -614,6 +633,7 @@
       "id": "dish-tapsilog", "familyId": "silog", "name": "Tapsilog", "cuisine": "filipino", "style": "comfort",
       "description": "Cured beef tapa with garlic fried rice and a fried egg — the classic silog.",
       "tags": ["savory", "garlicky", "sweet"], "richness": 0.65, "recognizability": 1, "illustration": "🍳",
+      "photo": {"file": "photos/dish-tapsilog.jpg", "source": "https://commons.wikimedia.org/wiki/File:Beef_Tapa_with_Egg.jpg", "author": "Maffeth.opiana", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["tapa", "tapsi", "beef tapa", "silog"],
       "attributes": { "ingredient:beef": 1, "ingredient:rice": 1, "ingredient:egg": 0.7, "method:fried": 1, "method:stir_fried": 0.4, "flavor:savory": 1, "flavor:sweet": 0.4, "flavor:garlicky": 0.6, "texture:chewy": 0.6, "texture:tender": 0.4, "structure:silog": 1 },
       "ingredients": [{ "key": "beef", "presence": "confirmed_present" }, { "key": "egg", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }]
@@ -696,6 +716,7 @@
       "id": "dish-arroz-caldo", "familyId": "congee", "name": "Arroz Caldo", "cuisine": "filipino", "style": "comfort",
       "description": "Gingery rice porridge with chicken, toasted garlic and a boiled egg.",
       "tags": ["gingery", "warming"], "richness": 0.5, "recognizability": 0.9, "illustration": "🥣",
+      "photo": {"file": "photos/dish-arroz-caldo.jpg", "source": "https://commons.wikimedia.org/wiki/File:Arroz_Caldo,_Grape_Custard,_Fruits,_Virgin_Light.jpg", "author": "George Parilla", "license": "CC BY 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by/2.0"},
       "aliases": ["lugaw", "rice porridge", "congee"],
       "mealTimes": { "merienda": 0.7, "dinner": 0.1 },
       "attributes": { "ingredient:rice": 1, "ingredient:chicken": 0.7, "ingredient:egg": 0.4, "method:simmered": 1, "flavor:gingery": 0.8, "flavor:savory": 1, "flavor:garlicky": 0.5, "texture:creamy": 0.6, "texture:soft": 1, "structure:porridge": 1 },
@@ -1354,6 +1375,7 @@
       "id": "dish-classic-cheeseburger", "familyId": "burger", "name": "Classic Cheeseburger", "cuisine": "western", "style": "comfort",
       "description": "Grilled beef patty with melted cheese, pickles, onion and ketchup in a soft bun.",
       "tags": ["cheesy", "juicy"], "richness": 0.75, "recognizability": 1, "illustration": "🍔",
+      "photo": {"file": "photos/dish-classic-cheeseburger.jpg", "source": "https://commons.wikimedia.org/wiki/File:Cheeseburger.jpg", "author": "Renee Comet (photographer)", "license": "Public domain", "changes": "Resized; shown cropped to fit"},
       "aliases": ["burger", "cheeseburger"],
       "attributes": { "ingredient:beef": 1, "ingredient:bread_dough": 1, "ingredient:cheese": 0.5, "method:grilled": 1, "flavor:savory": 1, "flavor:sweet": 0.2, "texture:tender": 0.6, "texture:soft": 0.6, "structure:burger": 1 },
       "ingredients": [{ "key": "beef", "presence": "confirmed_present" }, { "key": "dairy", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "sesame", "presence": "possible" }, { "key": "egg", "presence": "possible" }]
@@ -1481,6 +1503,7 @@
       "id": "dish-beef-pho", "familyId": "pho", "name": "Beef Pho", "cuisine": "vietnamese", "style": "light_fresh",
       "description": "Rice noodles in a clear, star-anise beef broth with herbs, lime and thin beef.",
       "tags": ["brothy", "aromatic"], "richness": 0.45, "recognizability": 0.9, "illustration": "🍜",
+      "photo": {"file": "photos/dish-beef-pho.jpg", "source": "https://commons.wikimedia.org/wiki/File:Pho_Bo_by_Banh_%26_Mee_in_Kirkgate_Market.jpg", "author": "Andy Li", "license": "CC0", "changes": "Resized; shown cropped to fit"},
       "aliases": ["pho", "pho bo"],
       "attributes": { "ingredient:rice_noodles": 1, "ingredient:beef": 1, "method:simmered": 1, "flavor:aromatic": 1, "flavor:herbal": 0.6, "flavor:savory": 1, "texture:brothy": 1, "texture:tender": 0.6, "structure:noodle_soup": 1 },
       "ingredients": [{ "key": "beef", "presence": "confirmed_present" }, { "key": "fish", "presence": "possible" }]
@@ -1583,6 +1606,7 @@
       "id": "dish-butter-chicken", "familyId": null, "name": "Butter Chicken", "cuisine": "indian", "style": "rich_indulgent",
       "description": "Tandoori chicken in a mild, buttery tomato and cream sauce, with rice or naan.",
       "tags": ["creamy", "mild", "rich"], "richness": 0.85, "recognizability": 0.9, "illustration": "🍛",
+      "photo": {"file": "photos/dish-butter-chicken.jpg", "source": "https://commons.wikimedia.org/wiki/File:Chicken_makhani.jpg", "author": "stu_spivack", "license": "CC BY-SA 2.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"},
       "aliases": ["murgh makhani"],
       "attributes": { "ingredient:chicken": 1, "ingredient:tomato": 0.6, "ingredient:rice": 0.5, "method:simmered": 1, "flavor:spiced": 0.6, "flavor:savory": 1, "flavor:sweet": 0.3, "texture:creamy": 1, "texture:tender": 0.8, "structure:curry": 1 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "dairy", "presence": "confirmed_present" }, { "key": "tree_nut", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
@@ -1898,6 +1922,7 @@
       "id": "dish-halo-halo", "familyId": null, "name": "Halo-Halo", "cuisine": "filipino", "style": "sharing",
       "description": "Shaved ice with sweet beans, jellies, fruit, leche flan, ube and evaporated milk.",
       "tags": ["sweet", "cold", "creamy"], "richness": 0.6, "recognizability": 1, "illustration": "🍧",
+      "photo": {"file": "photos/dish-halo-halo.jpg", "source": "https://commons.wikimedia.org/wiki/File:Halo_Halo_x2.jpg", "author": "MannyT1629", "license": "CC BY-SA 4.0", "changes": "Resized; shown cropped to fit", "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"},
       "aliases": ["halo halo", "halohalo", "shaved ice"],
       "mealTimes": { "breakfast": -0.5, "merienda": 0.9, "lunch": 0.2, "dinner": -0.2, "late_night": -0.1 },
       "attributes": { "ingredient:fruit": 1, "ingredient:beans": 0.4, "method:raw": 1, "flavor:sweet": 1, "texture:creamy": 1, "texture:chewy": 0.4, "structure:dessert": 1 },

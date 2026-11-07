@@ -245,3 +245,18 @@ Changes (behaviour and data are unchanged — same reactions, same strengths, sa
 - Short haptic tap where supported (`navigator.vibrate`; not available in iOS Safari).
 - One-time tip flag `fd.ui.tips.v1` — device only, not personal data, never backed up.
 - Progress reads "Card n of 10" (no "~"). Illustrations: sisig → 🥘, lechon kawali / lechon macau / fried liempo → 🍖.
+
+## 16. Dish photos — pilot of 25 (owner request 2026-11-08, branch `dish-photos`)
+
+- Source: Wikimedia Commons only, free licences only (CC0, public domain, CC BY / BY-SA 2.0–4.0). The owner
+  picked each photo on a review page (4 licence-checked candidates per dish, licence + author pulled from the
+  Commons API) — no auto-selection.
+- Stored as resized copies in `public/photos/<dish-id>.jpg` (≤ 800 px, JPEG q65, 60–180 KB, 2.8 MB total).
+  Never hot-linked: no third-party requests while swiping, works offline once loaded, can't silently change.
+- Provenance per dish in the catalog (`photo`: file, Commons source page, author, licence, licence link,
+  changes). The schema rejects non-free licences, non-Commons sources, wrong file names and CC BY photos without
+  a licence link; `catalog:validate` also checks every file exists.
+- Credit: short "Photo: author · licence" on the card; full credit with licence and source links in Details,
+  plus "A typical serving — yours may look different." A photo is never an ingredient claim.
+- The illustration stays as the fallback (no photo, or the file fails to load). Supabase stores only dish
+  id/name/cuisine, so no database change.

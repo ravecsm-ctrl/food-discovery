@@ -23,7 +23,8 @@ async function evalSessions(page: Page) {
 test("AT-001: first-time guest reaches a food card without registration", async ({ page }) => {
   await start(page);
   await expect(card(page).getByRole("heading")).not.toBeEmpty();
-  await expect(card(page).getByText("Illustration · no photo yet")).toBeVisible();
+  // Every picture is labelled: a photo credit, or the illustration placeholder label.
+  await expect(card(page).getByText(/^(Illustration · no photo yet|Photo: .+ · (CC|Public domain).*)$/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Not tonight" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sounds good" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo last reaction" })).toBeDisabled();
