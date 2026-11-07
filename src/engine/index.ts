@@ -11,3 +11,5 @@ export * from "./recommend.ts";
 export * from "./explain.ts";
 export * from "./together.ts";
 export * from "./own-dish.ts";
+export * from "./taste.ts";
+export * from "./mood.ts";

@@ -18,12 +18,13 @@ import {
 } from "@/lib/cloud-backup";
 import { RESTRICTION_LABELS } from "./DishInfo";
 import type { RestrictionKey } from "@/engine";
-import { clearAllLocalData, getProfile, getRestrictions, listMeals, onDataChange, removeMeal, replaceAll, setProfile, setRestrictions, snapshot, updateMeal } from "@/lib/local-store";
+import { clearAllLocalData, getProfile, getRestrictions, listEvalSessions, listMeals, onDataChange, removeMeal, replaceAll, setProfile, setRestrictions, snapshot, updateMeal } from "@/lib/local-store";
 import { detachBeforeLocalWipe } from "@/lib/cloud-sync";
 import { CloudAccount } from "./CloudAccount";
 import { MealEditor } from "./MealEditor";
 import { unlistedFoods, type UnlistedFood } from "@/lib/dish-search";
-import { ownDishSummary } from "@/engine";
+import { attributeWord, cuisineName, ownDishSummary, tasteHighlights, tasteProfile } from "@/engine";
+import { ratedMeals } from "@/lib/taste-data";
 import { DescribeDish } from "./DescribeDish";
 import { Sheet } from "./Sheet";
 import { relativeWhen } from "@/lib/recent-meals";
@@ -84,6 +85,11 @@ export function DataPanel() {
   };
 
   const unlisted = unlistedFoods(catalog, meals);
+  const rated = ratedMeals(meals, listEvalSessions());
+  const ratingOf = new Map(rated.map((r) => [r.meal.id, r.rating]));
+  const taste = tasteProfile(catalog, rated, new Date().toISOString());
+  const highlights = tasteHighlights(taste);
+  const word = (a: string) => (a.startsWith("cuisine:") ? cuisineName(a.slice(8)) : attributeWord(a));
   const nameOf = (m: ConfirmedMeal) => (m.dishId ? catalog.byId.get(m.dishId)?.name : m.unrecognizedName) ?? "Meal";
 
   return (
@@ -153,6 +159,36 @@ export function DataPanel() {
         )}
       </section>
 
+      <section className="mt-8" aria-labelledby="taste-profile" data-testid="taste-profile">
+        <h2 id="taste-profile" className="text-lg font-semibold">
+          Your taste so far
+        </h2>
+        {taste.ratedMeals < 2 ? (
+          <p className="mt-1 text-sm text-muted">
+            Rate a few meals you&apos;ve eaten (stars below) and suggestions will start to reflect what you enjoy. Swipes never count — only meals you rate.
+          </p>
+        ) : (
+          <div className="mt-1 text-sm">
+            {highlights.likes.length > 0 && (
+              <p>
+                <span className="text-muted">You tend to enjoy: </span>
+                <span className="font-medium">{highlights.likes.map(word).join(", ")}</span>
+              </p>
+            )}
+            {highlights.dislikes.length > 0 && (
+              <p className="mt-0.5">
+                <span className="text-muted">Less so: </span>
+                <span className="font-medium">{highlights.dislikes.map(word).join(", ")}</span>
+              </p>
+            )}
+            {highlights.likes.length + highlights.dislikes.length === 0 && <p className="text-muted">No clear pattern yet.</p>}
+            <p className="mt-1 text-xs text-muted">
+              From {taste.ratedMeals} rated meals. Older ratings count less, tonight&apos;s swipes always matter more, and changing a rating updates this right away.
+            </p>
+          </div>
+        )}
+      </section>
+
       <section className="mt-8" aria-labelledby="meals">
         <h2 id="meals" className="text-lg font-semibold">
           Meals you&apos;ve logged ({meals.length})
@@ -165,6 +201,23 @@ export function DataPanel() {
                 <span className="block truncate font-medium">{nameOf(m)}</span>
                 <span className="text-xs text-muted">
                   {relativeWhen(m.consumedAt, new Date(), m.timeApprox)} · {new Date(m.consumedAt).toLocaleDateString()}
+                </span>
+                <span className="mt-0.5 flex" role="group" aria-label={`Rate ${nameOf(m)}`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={(ratingOf.get(m.id) ?? 0) >= n}
+                      aria-label={`${n} star${n === 1 ? "" : "s"}`}
+                      onClick={() => {
+                        updateMeal(m.id, { rating: ratingOf.get(m.id) === n ? null : n });
+                        refresh();
+                      }}
+                      className={`px-0.5 text-lg leading-none ${(ratingOf.get(m.id) ?? 0) >= n ? "text-accent" : "text-line"}`}
+                    >
+                      ★
+                    </button>
+                  ))}
                 </span>
               </span>
               <span className="flex shrink-0 gap-1">

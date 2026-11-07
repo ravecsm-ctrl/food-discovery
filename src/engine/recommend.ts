@@ -27,6 +27,8 @@ export interface RecommendationItem {
     recentMealsConsidered: number;
     /** Recently eaten qualities (e.g. "method:fried", "style:comfort") this dish is a change from. */
     varietyFrom: string[];
+    /** Qualities of this dish the person has rated highly before (long-term taste). */
+    stableFrom: string[];
   };
   score: ScoreBreakdown;
 }
@@ -155,6 +157,7 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
         })),
         recentMealsConsidered: recent.length,
         varietyFrom,
+        stableFrom: stableEvidence(dish, deps.user.stableAttributeWeights),
       },
       score,
     };
@@ -178,6 +181,16 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
     inputDigest: inputDigest(session, deps),
     eligibleCount: candidates.eligible.length,
   };
+}
+
+/** The dish's qualities with the strongest learned positive weight (grounded "you've rated … highly"). */
+function stableEvidence(dish: Dish, weights: Record<string, number>, limit = 2): string[] {
+  return Object.entries(weights)
+    .map(([a, w]) => [a, w * (a.startsWith("cuisine:") ? (a === `cuisine:${dish.cuisine}` ? 1 : 0) : (dish.attributes[a] ?? 0))] as const)
+    .filter(([, v]) => v >= 0.08)
+    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+    .slice(0, limit)
+    .map(([a]) => a);
 }
 
 /** In Together Mode, a like that both people gave together is a SHARED_SESSION_POSITIVE (R-011). */
@@ -258,7 +271,7 @@ export function quickPicks(session: DiscoverySession, deps: EngineDeps): Recomme
       fulfillmentStatus: eligibility.fulfillment,
       safety: eligibility.safety,
       reasonCodes,
-      evidence: { likedSimilar: [], recentMealsConsidered: recent.length, varietyFrom },
+      evidence: { likedSimilar: [], recentMealsConsidered: recent.length, varietyFrom , stableFrom: [] },
       score,
     };
   });

@@ -180,3 +180,13 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 - **Privacy / catalog integrity (PRRD §9.4):** descriptions are private meal data; they never create catalog dishes, never make ingredient or allergen claims, and can't be used for hard exclusions. Only fixed slugs are accepted (validated on the device and in the database).
 - **Cloud:** migration `20261107000500_own_dish.sql` adds `meal_records.own_dish` (strict shape check; dropped when the meal names a listed dish); `save_meal` records description changes as corrections; `get_my_data` returns it. Sync compares descriptions in canonical order.
 - Plan step 4 (AI suggests the description) will pre-fill this same picker for confirmation.
+
+## 11. Library step 3 — long-term taste, mood focus, morning context (approved 2026-11-07)
+
+- **Long-term taste (`src/engine/taste.ts`, versioned `TASTE_V0`)** fills the previously empty stable-preference signal P (ETD §8.3, R-008). Learned **only from meals you ate and rated** — never from swipes (No ≠ dislike, Yes ≠ favourite) and never from unrated meals (unknown ≠ neutral). Rating signal 1★ −1 … 5★ +1, dislikes ×0.5; 60-day half-life; shrinkage prior of 2 pseudo-observations; no profile below 2 rated meals; staples ignored; works with your own described dishes. P keeps its 0.35 weight; tonight's swipes (0.45) still dominate.
+- **Grounded explanation:** STABLE_PREFERENCE_MATCH now says "You've rated brothy and Filipino dishes highly." from the dish's strongest learned qualities (`evidence.stableFrom`).
+- **Ratings:** star ratings on every logged meal in Your data (tap again to clear), plus the existing post-meal rating, stored on the meal. Migration `20261107000600_meal_ratings.sql`: one replaceable satisfaction event per meal (deterministic id), cleared when no rating is sent; `get_my_data` returns it. The taste profile is derived on the phone and never stored.
+- **"Your taste so far"** on Your data shows learned likes/dislikes and how many rated meals they come from.
+- **"In the mood for…" (`src/engine/mood.ts`):** optional cuisines and cravings (soup, noodles, rice, burger/sandwich/wrap, grilled, fried, spicy, seafood, light & fresh, comfort) narrow tonight's cards; alternatives within a row, all rows together; live "N dishes match". Counted separately from dietary exclusions (no false "hidden by restrictions"); dietary exclusions still apply inside the focus. Session-only, never stored or synced.
+- **Morning context:** 05:00–10:30 local, a small soft boost (softContext, weight 0.10) for silogs, porridge and sandwiches; results say so.
+- Not changed: quick picks still rank by freshness and familiarity only; Together Mode still uses no personal history (no taste profile).

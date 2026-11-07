@@ -442,3 +442,31 @@ describe("library step 2: own described dishes", () => {
     expect(await db.admin("select count(*) from public.dish_variants")).toEqual(before);
   });
 });
+
+describe("library step 3: meal ratings (R-016)", () => {
+  const save = (id: string, extra: Record<string, unknown>) =>
+    db.as(A, "select public.save_meal($1, $2)", [rid(), JSON.stringify({ id, dishId: "dish-bulalo", consumedAt: NOW, source: "manual", ...extra })]);
+  const ratingOf = async (id: string) => (await myData(db, A)).meals.find((m) => m.id === id)?.rating;
+
+  it("sets, replaces and clears one rating per meal", async () => {
+    const id = uuid(800);
+    await save(id, { rating: 5 });
+    expect(await ratingOf(id)).toBe(5);
+    await save(id, { rating: 2 });
+    expect(await ratingOf(id)).toBe(2);
+    const [{ c }] = (await db.admin<{ c: number }>("select count(*)::int as c from public.satisfaction_events where meal_record_id = $1", [id])) as [{ c: number }];
+    expect(c).toBe(1);
+    await save(id, {});
+    expect(await ratingOf(id)).toBeUndefined();
+  });
+
+  it("rejects ratings outside 1–5 whole stars", async () => {
+    for (const bad of [0, 6, 4.5, "5"]) await expect(save(uuid(801), { rating: bad })).rejects.toThrow(/rating/);
+  });
+
+  it("a rating is never a meal by itself and can't be put on someone else's meal", async () => {
+    const id = uuid(802);
+    await db.as(B, "select public.save_meal($1, $2)", [rid(), JSON.stringify({ id, dishId: "dish-bulalo", consumedAt: NOW, source: "manual" })]);
+    await expect(save(id, { rating: 1 })).rejects.toThrow(/NOT_FOUND/);
+  });
+});

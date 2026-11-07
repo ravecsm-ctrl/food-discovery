@@ -70,7 +70,7 @@ const ms = (iso: string) => {
 export function mealHash(m: ConfirmedMeal): string {
   // Canonical field order: the database may return JSON keys in a different order.
   const own = m.dishId ? "" : JSON.stringify(cleanOwnDish(m.ownDish) ?? "");
-  return fnv([m.dishId ?? "", m.dishId ? "" : (m.unrecognizedName ?? "").trim(), ms(m.consumedAt), m.timeApprox ? 1 : 0, own].join("|"));
+  return fnv([m.dishId ?? "", m.dishId ? "" : (m.unrecognizedName ?? "").trim(), ms(m.consumedAt), m.timeApprox ? 1 : 0, own, m.rating ?? ""].join("|"));
 }
 
 /** Content fingerprint of a session: the parts that only grow, ignoring float precision and timestamps of sync. */
@@ -176,6 +176,7 @@ function stripCloudMeal(m: ConfirmedMeal & { sourceSessionId?: string | null }):
     source: m.source,
     timeApprox: m.timeApprox ?? false,
     ...(m.dishId || !cleanOwnDish(m.ownDish) ? {} : { ownDish: cleanOwnDish(m.ownDish) }),
+    ...(m.rating ? { rating: m.rating } : {}),
   };
 }
 

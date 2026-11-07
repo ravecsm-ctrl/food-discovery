@@ -5,6 +5,7 @@
  * - "possible" or unknown ingredient information never becomes a safety claim.
  * - Fulfillment/budget are never claimed as verified without evidence (the prototype has none).
  */
+import { inFocus } from "./mood.ts";
 import type { Catalog, Dish, FulfillmentStatus, RestrictionKey, SafetyAssessment, SessionConstraints } from "./types.ts";
 
 export interface EligibilityResult {
@@ -16,6 +17,8 @@ export interface EligibilityResult {
   fulfillment: FulfillmentStatus;
   /** Prototype catalog has no reliable prices: a hard budget can never be confirmed as met. */
   budgetVerified: false;
+  /** Outside tonight's "in the mood for…" focus (not a dietary exclusion). */
+  outOfFocus: boolean;
 }
 
 export const DEFAULT_CONSTRAINTS: SessionConstraints = {
@@ -47,19 +50,24 @@ export function evaluateEligibility(dish: Dish, constraints: SessionConstraints)
   const fulfillment: FulfillmentStatus =
     constraints.acquisition === "delivery" || constraints.acquisition === "dine_out" ? "search_only" : "unverified";
 
+  const outOfFocus = !inFocus(dish, constraints.focus);
   return {
     dishId: dish.id,
-    eligible: excludedBy.length === 0,
+    eligible: excludedBy.length === 0 && !outOfFocus,
     excludedBy,
     safety,
     fulfillment,
     budgetVerified: false,
+    outOfFocus,
   };
 }
 
 export interface CandidateSet {
   eligible: Dish[];
+  /** Excluded by declared dietary avoidances only (the count shown as "hidden because of restrictions"). */
   excluded: EligibilityResult[];
+  /** Dishes outside tonight's mood focus (not counted as dietary exclusions). */
+  outOfFocus: number;
   byId: Map<string, EligibilityResult>;
 }
 
@@ -68,11 +76,13 @@ export function buildCandidates(catalog: Catalog, constraints: SessionConstraint
   const eligible: Dish[] = [];
   const excluded: EligibilityResult[] = [];
   const byId = new Map<string, EligibilityResult>();
+  let outOfFocus = 0;
   for (const dish of catalog.dishes) {
     const r = evaluateEligibility(dish, constraints);
     byId.set(dish.id, r);
     if (r.eligible) eligible.push(dish);
-    else excluded.push(r);
+    else if (r.excludedBy.length > 0) excluded.push(r);
+    else outOfFocus++;
   }
-  return { eligible, excluded, byId };
+  return { eligible, excluded, outOfFocus, byId };
 }

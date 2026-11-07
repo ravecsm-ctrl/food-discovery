@@ -124,6 +124,8 @@ export interface ConfirmedMeal {
   timeApprox?: boolean;
   /** For a food not in the dish list: the person's own short description (see own-dish.ts). */
   ownDish?: import("./own-dish.ts").OwnDish | null;
+  /** How much the person enjoyed it, 1–5 stars, if they said (satisfaction ≠ consumption). */
+  rating?: number | null;
 }
 
 export interface UserModel {
@@ -146,6 +148,8 @@ export interface SessionConstraints {
   maxBudgetPhp: number | null;
   avoidedIngredients: RestrictionKey[];
   softAttributeWeights: Record<string, number>;
+  /** Optional "in the mood for…" focus for this session (not a dietary rule). */
+  focus?: import("./mood.ts").SessionFocus;
 }
 
 export interface PolicyContext {

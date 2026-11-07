@@ -139,9 +139,13 @@ export function explainItem(
         }
         break;
       }
-      case "STABLE_PREFERENCE_MATCH":
-        out.push({ code, text: "Matches food preferences you've set." });
+      case "STABLE_PREFERENCE_MATCH": {
+        // Grounded in rated meals only (taste-v0): name the qualities, never invent a habit.
+        const from = item.evidence.stableFrom ?? [];
+        const words = from.map((a) => (a.startsWith("cuisine:") ? cuisineName(a.slice(8)) : attributeWord(a)));
+        out.push({ code, text: words.length > 0 ? `You've rated ${joinAnd(words)} dishes highly.` : "Similar to meals you've rated highly." });
         break;
+      }
       case "RECENT_FOOD_VARIETY":
         if (item.evidence.varietyFrom.length > 0) {
           out.push({ code, text: `A change from the ${varietyPhrase(item.evidence.varietyFrom)} you've had recently.` });

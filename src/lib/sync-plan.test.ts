@@ -144,3 +144,12 @@ describe("own described dishes (library step 2)", () => {
     expect(p.pullMeals[0]?.ownDish).toEqual(kebab);
   });
 });
+
+describe("meal ratings (library step 3)", () => {
+  it("a new rating on this phone is pushed; a rating made elsewhere is pulled", () => {
+    const base = ledgerAfter(U, local([meal(5)], []), "t");
+    const ratedHere = { ...meal(5), rating: 4 };
+    expect(planSync(local([ratedHere], []), cloud([meal(5)], []), base).pushMeals).toEqual([ratedHere]);
+    expect(planSync(local([meal(5)], []), cloud([{ ...meal(5), rating: 2 }], []), base).pullMeals[0]?.rating).toBe(2);
+  });
+});
