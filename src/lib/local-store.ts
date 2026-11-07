@@ -17,6 +17,8 @@ const KEYS = {
   profile: "fd.profile.v1",
   /** "Love it" / "Not for a while" / "Never show again" (strong-prefs.ts). */
   strongPrefs: "fd.strongprefs.v1",
+  /** One-time UI tips already shown on this device (not personal data; never backed up). */
+  tips: "fd.ui.tips.v1",
 } as const;
 
 /** Keys whose content is part of the personal backup (never the cloud token, never restrictions). */
@@ -287,6 +289,19 @@ export function replaceAll(data: BackupData): void {
 
 export function hasLocalData(): boolean {
   return listEvalSessions().length > 0 || listMeals().length > 0 || listStrongPrefs().length > 0;
+}
+
+/* ---------------- one-time tips ---------------- */
+
+export type TipId = "swipe-directions";
+
+export function tipSeen(id: TipId): boolean {
+  return read<string[]>(local, KEYS.tips, []).includes(id);
+}
+
+export function markTipSeen(id: TipId): void {
+  const seen = read<string[]>(local, KEYS.tips, []);
+  if (!seen.includes(id)) write(local, KEYS.tips, [...seen, id]);
 }
 
 /* ---------------- maintenance ---------------- */

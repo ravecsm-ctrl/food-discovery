@@ -225,3 +225,23 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
   `delete_strong_preference` RPCs (consent, idempotency, validation), explicit-strength reactions round-trip,
   `get_my_data` returns them, `delete_my_account` removes them.
 - Gestures: buttons and ↑/↓ keys only; no vertical swipe (the card scrolls vertically on phones).
+
+## 15. Swipe screen redesign (owner request 2026-11-07, branch `swipe-redesign`)
+
+UX audit findings: strong reactions sat in a second row of pills that read as secondary; the ⏸/↶ glyphs
+rendered poorly; the strong-reaction note and readiness banner pushed the card and buttons around; only
+horizontal swipes; distance-only threshold (no flick); stamps only while dragging.
+
+Changes (behaviour and data are unchanged — same reactions, same strengths, same storage):
+- One row of round buttons (`ActionBar.tsx`): ⏱ Not for a while · ✕ Not tonight · ↶ Undo · ♥ Sounds good · ★ Love it.
+  "No" left, "yes" right, stronger toward the edges, Undo centred. Visible labels are the accessible names.
+  Together Mode: ✕ Not for us · ↶ Undo · ♥ We like it. New colour tokens `--love` (gold) and `--later` (blue).
+- Four-way swipe in solo (`SwipeCard.tsx`): up = Love it, down = Not for a while, with stamps for every
+  direction (also shown when a button is tapped). Flicks count (≥ 50 px at ≥ 0.55 px/ms); 100 px drag otherwise.
+  Together Mode stays horizontal only. Tapping the picture opens Details.
+- Notes (strong-reaction note, readiness prompt, one-time swipe tip) float over the picture, let swipes pass
+  through, and the strong-reaction note fades after 6 s. The card and buttons never move.
+- The deck behind the card stays blank on purpose: the next dish is chosen only after you react.
+- Short haptic tap where supported (`navigator.vibrate`; not available in iOS Safari).
+- One-time tip flag `fd.ui.tips.v1` — device only, not personal data, never backed up.
+- Progress reads "Card n of 10" (no "~"). Illustrations: sisig → 🥘, lechon kawali / lechon macau / fried liempo → 🍖.

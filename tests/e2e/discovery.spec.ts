@@ -110,7 +110,7 @@ test("AT-008 / ALG-013: rejecting everything gives an honest no-match and discov
   await expect(page.getByTestId("recommendation")).toHaveCount(0);
   await page.getByRole("button", { name: "Keep discovering" }).click();
   await expect(card(page)).toBeVisible();
-  await expect(page.getByTestId("progress")).toContainText("of ~20");
+  await expect(page.getByTestId("progress")).toContainText("of 20");
 });
 
 test("details open without casting a vote", async ({ page }) => {

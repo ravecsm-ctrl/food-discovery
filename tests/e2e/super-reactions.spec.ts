@@ -20,12 +20,12 @@ async function startSolo(page: Page) {
 test("Love it saves a favourite; Not for a while hides for 30 days; Never show again; Undo restores", async ({ page }) => {
   await startSolo(page);
   const first = await cardId(page);
-  await page.getByRole("button", { name: "★ Love it" }).click();
+  await page.getByRole("button", { name: "Love it" }).click();
   await expect(page.getByTestId("super-note")).toContainText("saved to your favourites");
   expect(await prefs(page)).toEqual([expect.objectContaining({ dishId: first, kind: "favourite" })]);
 
   const second = await cardId(page);
-  await page.getByRole("button", { name: "⏸ Not for a while" }).click();
+  await page.getByRole("button", { name: "Not for a while" }).click();
   await expect(page.getByTestId("super-note")).toContainText("hidden for 30 days");
   const snoozed = (await prefs(page)).find((p) => p.dishId === second)!;
   expect(snoozed.kind).toBe("snooze");
@@ -81,7 +81,86 @@ test("Together Mode has no Love it / Not for a while", async ({ page }) => {
   await setup.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Skip — start swiping" }).click();
   await expect(page.getByTestId("food-card")).toBeVisible();
-  await expect(page.getByRole("button", { name: "★ Love it" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Love it" })).toHaveCount(0);
   await page.keyboard.press("ArrowUp");
+  expect(await prefs(page)).toEqual([]);
+});
+
+async function drag(page: Page, dx: number, dy: number) {
+  const box = (await page.getByTestId("food-card").boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx / 2, y + dy / 2, { steps: 4 });
+  await page.mouse.move(x + dx, y + dy, { steps: 4 });
+  await page.mouse.up();
+}
+
+test("swipe up = Love it, swipe down = Not for a while (solo)", async ({ page }) => {
+  await startSolo(page);
+  const first = await cardId(page);
+  await drag(page, 0, -200);
+  await expect(page.getByTestId("super-note")).toContainText("saved to your favourites");
+  const second = await cardId(page);
+  expect(second).not.toBe(first);
+  await drag(page, 10, 200);
+  await expect(page.getByTestId("super-note")).toContainText("hidden for 30 days");
+  expect((await prefs(page)).map((p) => [p.dishId, p.kind])).toEqual(
+    expect.arrayContaining([
+      [first, "favourite"],
+      [second, "snooze"],
+    ]),
+  );
+});
+
+test("the round buttons stay put when a note appears", async ({ page }) => {
+  await startSolo(page);
+  const bar = page.getByTestId("action-bar");
+  const before = (await bar.boundingBox())!;
+  await page.getByRole("button", { name: "Not for a while" }).click();
+  await expect(page.getByTestId("super-note")).toBeVisible();
+  const after = (await bar.boundingBox())!;
+  expect(after.y).toBe(before.y);
+  // Swipes still work on the part of the card under the note.
+  const note = (await page.getByTestId("super-note").boundingBox())!;
+  const id = await cardId(page);
+  await page.mouse.move(note.x + 20, note.y + note.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(note.x + 120, note.y + note.height / 2, { steps: 4 });
+  await page.mouse.move(note.x + 240, note.y + note.height / 2, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByTestId("food-card")).not.toHaveAttribute("data-dish-id", id as string);
+});
+
+test("the swipe tip shows once per device", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.removeItem("fd.ui.tips.v1"));
+  await startSolo(page);
+  await expect(page.getByTestId("swipe-tip")).toContainText("Swipe up to save a favourite");
+  await page.getByRole("button", { name: "Got it" }).click();
+  await expect(page.getByTestId("swipe-tip")).toHaveCount(0);
+  await startSolo(page);
+  await expect(page.getByTestId("swipe-tip")).toHaveCount(0);
+});
+
+test("tapping the picture opens Details", async ({ page }) => {
+  await startSolo(page);
+  const box = (await page.getByTestId("dish-art").boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 30);
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("Together Mode: vertical drags never save favourites or hides", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Decide together on this phone" }).click();
+  const setup = page.getByTestId("together-setup");
+  await setup.getByLabel("Your name").fill("Rave");
+  await setup.getByLabel("Partner's name").fill("Sam");
+  await setup.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Skip — start swiping" }).click();
+  const id = await cardId(page);
+  await drag(page, 0, -220);
+  await expect(page.getByTestId("food-card")).toHaveAttribute("data-dish-id", id as string);
   expect(await prefs(page)).toEqual([]);
 });

@@ -61,7 +61,7 @@
     {
       "id": "dish-pork-sisig", "familyId": "sisig", "name": "Pork Sisig", "cuisine": "filipino", "style": "sharing",
       "description": "Chopped grilled pork with onions, chili and calamansi, served sizzling.",
-      "tags": ["savory", "crispy", "rich"], "richness": 0.85, "recognizability": 1, "illustration": "🍳",
+      "tags": ["savory", "crispy", "rich"], "richness": 0.85, "recognizability": 1, "illustration": "🥘",
       "aliases": ["sisig", "sizzling sisig"],
       "mealTimes": { "late_night": 0.75, "lunch": 0.3 },
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:grilled": 0.6, "method:fried": 0.6, "flavor:savory": 1, "flavor:sour": 0.4, "flavor:spicy": 0.4, "texture:crispy": 0.7, "texture:chewy": 0.4, "structure:sizzling_plate": 1 },
@@ -78,7 +78,7 @@
     {
       "id": "dish-lechon-kawali", "familyId": "lechon-kawali", "name": "Lechon Kawali", "cuisine": "filipino", "style": "rich_indulgent",
       "description": "Deep-fried pork belly with crackling skin and a tangy liver or vinegar dip.",
-      "tags": ["crispy", "rich", "savory"], "richness": 0.95, "recognizability": 1, "illustration": "🥓",
+      "tags": ["crispy", "rich", "savory"], "richness": 0.95, "recognizability": 1, "illustration": "🍖",
       "aliases": ["lechon", "crispy pork belly"],
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:fried": 1, "flavor:savory": 0.9, "texture:crispy": 1, "texture:tender": 0.4, "structure:rice_meal": 0.8 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }]
@@ -582,7 +582,7 @@
     {
       "id": "dish-crunchy-sisig", "familyId": "sisig", "name": "Crunchy Sisig", "cuisine": "filipino", "style": "street_food",
       "description": "Pork sisig fried until extra crunchy, with onion, chili and calamansi.",
-      "tags": ["crunchy", "tangy", "spicy"], "richness": 0.85, "recognizability": 0.85, "illustration": "🥓",
+      "tags": ["crunchy", "tangy", "spicy"], "richness": 0.85, "recognizability": 0.85, "illustration": "🥘",
       "aliases": ["sisig"],
       "mealTimes": { "late_night": 0.75, "lunch": 0.3 },
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:fried": 1, "method:grilled": 0.4, "flavor:savory": 1, "flavor:sour": 0.4, "flavor:spicy": 0.4, "texture:crunchy": 1, "texture:crispy": 0.7, "structure:sizzling_plate": 1 },
@@ -591,7 +591,7 @@
     {
       "id": "dish-fried-liempo", "familyId": "liempo", "name": "Fried Liempo", "cuisine": "filipino", "style": "comfort",
       "description": "Pork belly marinated in garlic and vinegar, fried crisp and served with rice.",
-      "tags": ["crispy", "garlicky"], "richness": 0.85, "recognizability": 0.95, "illustration": "🥓",
+      "tags": ["crispy", "garlicky"], "richness": 0.85, "recognizability": 0.95, "illustration": "🍖",
       "aliases": ["liempo", "pork belly"],
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.7, "method:fried": 1, "flavor:savory": 1, "flavor:garlicky": 0.6, "texture:crispy": 1, "texture:tender": 0.5, "structure:rice_meal": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }]
@@ -899,7 +899,7 @@
     {
       "id": "dish-lechon-macau", "familyId": null, "name": "Lechon Macau", "cuisine": "chinese", "style": "rich_indulgent",
       "description": "Roasted pork belly with crisp crackling skin, Macau-style.",
-      "tags": ["crackling", "salty"], "richness": 0.9, "recognizability": 0.75, "illustration": "🥓",
+      "tags": ["crackling", "salty"], "richness": 0.9, "recognizability": 0.75, "illustration": "🍖",
       "aliases": ["roast pork belly", "siu yuk"],
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:baked": 1, "flavor:savory": 1, "flavor:spiced": 0.3, "texture:crispy": 1, "texture:tender": 0.6, "structure:rice_meal": 0.7 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }]

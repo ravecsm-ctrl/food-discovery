@@ -63,6 +63,8 @@ import {
   listMeals,
   listStrongPrefs,
   getStrongPref,
+  markTipSeen,
+  tipSeen,
   setStrongPref,
   setProfile,
   setRestrictions,
@@ -77,7 +79,8 @@ import { DishDetails, DishLabel, RESTRICTION_LABELS, SafetyNote } from "./DishIn
 import { RecentMealsStep } from "./RecentMealsStep";
 import { Sheet } from "./Sheet";
 import { TogetherMealsStep } from "./TogetherMealsStep";
-import { SwipeCard } from "./SwipeCard";
+import { ActionBar } from "./ActionBar";
+import { SwipeCard, type CardAction } from "./SwipeCard";
 
 type Phase = "home" | "recent-meals" | "together-setup" | "together-meals" | "discover" | "results" | "picked" | "other-meal" | "rate" | "thanks";
 
@@ -151,7 +154,7 @@ export function DiscoveryApp() {
   const [traces, setTraces] = useState<Record<string, CardTrace>>({});
   const [runs, setRuns] = useState<RecommendationRun[]>([]);
   const [assignment, setAssignment] = useState<"rotation" | "manual">("rotation");
-  const [leaving, setLeaving] = useState<ReactionValue | null>(null);
+  const [leaving, setLeaving] = useState<CardAction | null>(null);
   const [announce, setAnnounce] = useState("");
   const [detailsFor, setDetailsFor] = useState<string | null>(null);
   const [restrictionsOpen, setRestrictionsOpen] = useState(false);
@@ -174,6 +177,8 @@ export function DiscoveryApp() {
   const [jointConfirm, setJointConfirm] = useState<{ dishId: string; rank: number } | null>(null);
   /** Note shown after "Love it" / "Not for a while" (with "Never show again" for the latter). */
   const [superNote, setSuperNote] = useState<{ dishId: string; kind: "favourite" | "snooze" | "never" } | null>(null);
+  /** One-time hint about the four swipe directions (solo). */
+  const [tip, setTip] = useState(false);
   /** What each strong reaction replaced, so Undo puts the dish's previous preference back. */
   const prefUndo = useRef<Map<string, { dishId: string; prev: StrongPreference | null }>>(new Map());
   const runTriggers = useRef<RecommendationRunRecord["trigger"][]>([]);
@@ -365,7 +370,13 @@ export function DiscoveryApp() {
       const isStrong = strong && session.mode !== "together";
       const dishId = pendingCard.dishId;
       const dishName = catalog.byId.get(dishId)?.name ?? "";
-      setLeaving(value);
+      setLeaving(isStrong ? (value === "yes" ? "love" : "later") : value);
+      setTip(false);
+      try {
+        navigator.vibrate?.(isStrong ? [12, 50, 12] : 8);
+      } catch {
+        /* no haptics on this device */
+      }
       const commit = () => {
         setLeaving(null);
         const now = nowIso();
@@ -418,6 +429,29 @@ export function DiscoveryApp() {
     setPhase("discover");
     setAnnounce(`Undone. Back to ${back ? catalog.byId.get(back.dishId)?.name : "the previous card"}.`);
   }, [assignment, leaving, persist, runs, session, traces]);
+
+  /** Card gesture or round button → reaction. "love" / "later" are the solo strong reactions. */
+  const act = useCallback(
+    (a: CardAction) => (a === "love" ? react("yes", true) : a === "later" ? react("no", true) : react(a)),
+    [react],
+  );
+
+  const dismissTip = useCallback(() => setTip(false), []);
+
+  // Show the swipe-directions tip once per device, on the first solo card.
+  useEffect(() => {
+    if (phase !== "discover" || session?.mode === "together" || tipSeen("swipe-directions")) return;
+    markTipSeen("swipe-directions");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTip(true);
+  }, [phase, session?.mode]);
+
+  // The strong-reaction note fades on its own; "Never show again" restarts the timer.
+  useEffect(() => {
+    if (!superNote) return;
+    const t = window.setTimeout(() => setSuperNote(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [superNote]);
 
   const showResults = useCallback(
     (trigger: RecommendationRunRecord["trigger"]) => {
@@ -608,7 +642,7 @@ export function DiscoveryApp() {
                 ← Exit
               </button>
               <p className="text-sm font-medium text-muted" data-testid="progress">
-                Card {Math.min(effectiveCardCount(session) + 1, session.roundEndsAt)} of ~{session.roundEndsAt}
+                Card {Math.min(effectiveCardCount(session) + 1, session.roundEndsAt)} of {session.roundEndsAt}
               </p>
               <button
                 type="button"
@@ -626,28 +660,86 @@ export function DiscoveryApp() {
               />
             </div>
 
-            <div className="relative min-h-[420px] flex-1">
-              <div className="absolute inset-x-4 bottom-[-8px] top-3 rounded-[28px] bg-surface-2 ring-1 ring-line" aria-hidden="true" />
+            <div className="relative min-h-[340px] flex-1">
+              {/* The deck behind: the next dish is chosen only after you react, so these stay blank. */}
+              <div className="absolute inset-x-6 -bottom-4 top-6 rounded-[28px] bg-surface-2/60 ring-1 ring-line" aria-hidden="true" />
+              <div className="absolute inset-x-3 -bottom-2 top-3 rounded-[28px] bg-surface-2 ring-1 ring-line" aria-hidden="true" />
               {currentDish && exposure && (
                 <SwipeCard
                   key={exposure.exposureId}
                   dish={currentDish}
                   safety={candidates.byId.get(currentDish.id)?.safety ?? { status: "no_restrictions_declared", possibleConflicts: [] }}
                   leaving={leaving}
-                  onSwipe={react}
+                  allowStrong={session.mode !== "together"}
+                  onSwipe={act}
                   onDetails={() => setDetailsFor(currentDish.id)}
                 />
               )}
-            </div>
-
-            {ready?.promptReady && (
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3 ring-1 ring-line" role="status" data-testid="readiness-prompt">
-                <p className="text-sm">You have a few promising picks.</p>
-                <button type="button" onClick={() => showResults("readiness_prompt")} className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">
-                  See them
-                </button>
+              {/* Notes float over the picture so the card and buttons never jump; swipes pass through them. */}
+              <div className="pointer-events-none absolute inset-x-3 top-11 z-10 flex flex-col gap-2">
+                {superNote && session.mode !== "together" && (
+                  <div
+                    className="animate-toast-in flex items-center justify-between gap-3 rounded-2xl bg-surface/95 px-4 py-2.5 text-sm shadow-lg ring-1 ring-line backdrop-blur"
+                    role="status"
+                    data-testid="super-note"
+                  >
+                    <p className="min-w-0">
+                      <span aria-hidden="true" className={superNote.kind === "favourite" ? "text-love" : "text-later"}>
+                        {superNote.kind === "favourite" ? "★ " : "⏱ "}
+                      </span>
+                      <span className="font-semibold">{catalog.byId.get(superNote.dishId)?.name}</span>{" "}
+                      {superNote.kind === "favourite"
+                        ? "saved to your favourites."
+                        : superNote.kind === "snooze"
+                          ? `hidden for ${STRONG_PREFS_V0.snoozeDays} days.`
+                          : "won't be shown again. You can change this in Your data."}
+                    </p>
+                    {superNote.kind === "snooze" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const now = nowIso();
+                          setStrongPref(superNote.dishId, { dishId: superNote.dishId, kind: "never", at: now });
+                          setSuperNote({ ...superNote, kind: "never" });
+                          setAnnounce(`${catalog.byId.get(superNote.dishId)?.name ?? ""} won't be shown again.`);
+                        }}
+                        className="pointer-events-auto shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold"
+                      >
+                        Never show again
+                      </button>
+                    )}
+                  </div>
+                )}
+                {ready?.promptReady && (
+                  <div
+                    className="animate-toast-in flex items-center justify-between gap-3 rounded-2xl bg-surface/95 px-4 py-2.5 shadow-lg ring-1 ring-line backdrop-blur"
+                    role="status"
+                    data-testid="readiness-prompt"
+                  >
+                    <p className="text-sm">You have a few promising picks.</p>
+                    <button type="button" onClick={() => showResults("readiness_prompt")} className="pointer-events-auto shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">
+                      See them
+                    </button>
+                  </div>
+                )}
+                {tip && session.mode !== "together" && (
+                  <div
+                    className="animate-toast-in rounded-2xl bg-surface/95 px-4 py-3 text-sm shadow-lg ring-1 ring-line backdrop-blur"
+                    role="note"
+                    data-testid="swipe-tip"
+                  >
+                    <p>
+                      Swipe <b>right</b> if it sounds good, <b>left</b> for not tonight.
+                      <br />
+                      Swipe <b className="text-love">up</b> to save a favourite, <b className="text-later">down</b> to hide it for a while.
+                    </p>
+                    <button type="button" onClick={dismissTip} className="pointer-events-auto mt-2 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold">
+                      Got it
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {session.mode === "together" && pair && disagreeOpen ? (
               <div className="mt-4 rounded-3xl bg-surface p-3 ring-1 ring-line" role="group" aria-labelledby="who-wants" data-testid="disagree-panel">
@@ -666,90 +758,14 @@ export function DiscoveryApp() {
                 </button>
               </div>
             ) : (
-              <div className="mt-4 grid grid-cols-[auto_1fr_1fr] items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={undo}
-                  disabled={!canUndo(session)}
-                  className="grid h-14 w-14 place-items-center rounded-full bg-surface text-xl ring-1 ring-line disabled:opacity-35"
-                  aria-label="Undo last reaction"
-                  title="Undo (U)"
-                >
-                  ↶
-                </button>
-                <button
-                  type="button"
-                  onClick={() => react("no")}
-                  disabled={!currentDish}
-                  className="flex h-16 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-2 text-[15px] font-semibold text-no ring-2 ring-no/60 active:scale-[0.98]"
-                >
-                  <span aria-hidden="true">✕</span> {session.mode === "together" ? "Not for us" : "Not tonight"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => react("yes")}
-                  disabled={!currentDish}
-                  className="flex h-16 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-yes px-2 text-[15px] font-semibold text-white active:scale-[0.98]"
-                >
-                  <span aria-hidden="true">♥</span> {session.mode === "together" ? "We like it" : "Sounds good"}
-                </button>
-              </div>
-            )}
-            {session.mode !== "together" && (
-              <div className="mt-2 grid grid-cols-[3.5rem_1fr_1fr] gap-2.5">
-                <span aria-hidden="true" />
-                <button
-                  type="button"
-                  onClick={() => react("no", true)}
-                  disabled={!currentDish}
-                  className="h-11 min-w-0 whitespace-nowrap rounded-full px-2 text-[14px] font-medium text-no ring-1 ring-no/40"
-                  title={`Hide this dish for ${STRONG_PREFS_V0.snoozeDays} days (↓)`}
-                >
-                  ⏸ Not for a while
-                </button>
-                <button
-                  type="button"
-                  onClick={() => react("yes", true)}
-                  disabled={!currentDish}
-                  className="h-11 min-w-0 whitespace-nowrap rounded-full px-2 text-[14px] font-semibold text-yes ring-1 ring-yes/50"
-                  title="Save as a favourite (↑)"
-                >
-                  ★ Love it
-                </button>
-              </div>
-            )}
-            {superNote && session.mode !== "together" && (
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-2.5 text-sm ring-1 ring-line" role="status" data-testid="super-note">
-                <p className="min-w-0">
-                  <span className="font-semibold">{catalog.byId.get(superNote.dishId)?.name}</span>{" "}
-                  {superNote.kind === "favourite"
-                    ? "saved to your favourites."
-                    : superNote.kind === "snooze"
-                      ? `hidden for ${STRONG_PREFS_V0.snoozeDays} days.`
-                      : "won't be shown again. You can change this in Your data."}
-                </p>
-                {superNote.kind === "snooze" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const now = nowIso();
-                      setStrongPref(superNote.dishId, { dishId: superNote.dishId, kind: "never", at: now });
-                      setSuperNote({ ...superNote, kind: "never" });
-                      setAnnounce(`${catalog.byId.get(superNote.dishId)?.name ?? ""} won't be shown again.`);
-                    }}
-                    className="shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold"
-                  >
-                    Never show again
-                  </button>
-                )}
-              </div>
+              <ActionBar together={session.mode === "together"} disabled={!currentDish} canUndo={canUndo(session)} onAction={act} onUndo={undo} />
             )}
             {session.mode === "together" && pair && !disagreeOpen && (
               <button type="button" onClick={() => setDisagreeOpen(true)} disabled={!currentDish} className="mt-2 h-11 w-full rounded-full text-[15px] font-medium text-muted ring-1 ring-line">
                 We disagree on this one
               </button>
             )}
-            <p className="mt-3 hidden text-center text-xs text-muted sm:block">
+            <p className="mt-2 hidden text-center text-xs text-muted sm:block">
               Keyboard: ← Not tonight · → Sounds good{session.mode !== "together" ? " · ↑ Love it · ↓ Not for a while" : ""} · U Undo
             </p>
           </section>
