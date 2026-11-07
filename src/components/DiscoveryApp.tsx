@@ -660,10 +660,10 @@ export function DiscoveryApp() {
               />
             </div>
 
-            <div className="relative min-h-[340px] flex-1">
+            <div className="relative min-h-[340px] flex-1 [&>[data-testid=food-card]]:bottom-3">
               {/* The deck behind: the next dish is chosen only after you react, so these stay blank. */}
-              <div className="absolute inset-x-6 -bottom-4 top-6 rounded-[28px] bg-surface-2/60 ring-1 ring-line" aria-hidden="true" />
-              <div className="absolute inset-x-3 -bottom-2 top-3 rounded-[28px] bg-surface-2 ring-1 ring-line" aria-hidden="true" />
+              <div className="absolute inset-x-6 bottom-0 top-6 rounded-[28px] bg-surface-2/60 ring-1 ring-line" aria-hidden="true" />
+              <div className="absolute inset-x-3 bottom-1.5 top-3 rounded-[28px] bg-surface-2 ring-1 ring-line" aria-hidden="true" />
               {currentDish && exposure && (
                 <SwipeCard
                   key={exposure.exposureId}

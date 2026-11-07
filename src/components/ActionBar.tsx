@@ -23,7 +23,7 @@ export function ActionBar({
   onUndo: () => void;
 }) {
   return (
-    <div className={`mt-3 grid items-start gap-1 ${together ? "grid-cols-3" : "grid-cols-5"}`} data-testid="action-bar">
+    <div className={`mt-2 grid items-start gap-1 ${together ? "grid-cols-3" : "grid-cols-5"}`} data-testid="action-bar">
       {!together && (
         <RoundButton size="sm" tone="later" label="Not for a while" title="Hide this dish for 30 days (↓ or swipe down)" disabled={disabled} onClick={() => onAction("later")}>
           <ClockIcon />
@@ -83,10 +83,10 @@ function RoundButton({
       aria-label={ariaLabel}
       className="group flex min-w-0 flex-col items-center gap-1 rounded-2xl pb-0.5 disabled:opacity-35"
     >
-      <span aria-hidden="true" className="grid h-[66px] place-items-center">
+      <span aria-hidden="true" className="grid h-14 place-items-center">
         <span
-          className={`grid place-items-center rounded-full bg-surface shadow-[0_6px_18px_-8px_rgba(0,0,0,0.45)] ring-2 transition-transform group-active:scale-90 ${TONES[tone]} ${
-            size === "lg" ? "h-[66px] w-[66px] [&>svg]:h-8 [&>svg]:w-8" : "h-12 w-12 [&>svg]:h-[22px] [&>svg]:w-[22px]"
+          className={`grid place-items-center rounded-full bg-surface shadow-[0_4px_12px_-6px_rgba(0,0,0,0.4)] ring-2 transition-transform group-active:scale-90 ${TONES[tone]} ${
+            size === "lg" ? "h-14 w-14 [&>svg]:h-7 [&>svg]:w-7" : "h-11 w-11 [&>svg]:h-5 [&>svg]:w-5"
           }`}
         >
           {children}
