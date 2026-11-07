@@ -3,7 +3,7 @@
  * Invalid records are rejected with path-specific, human-readable errors.
  */
 import { z } from "zod";
-import { ATTRIBUTE_KINDS, DISH_STYLES, RESTRICTION_KEYS } from "../engine/types.ts";
+import { ATTRIBUTE_KINDS, DISH_STYLES, PHOTO_LICENSES, RESTRICTION_KEYS } from "../engine/types.ts";
 import type { Catalog, Dish } from "../engine/types.ts";
 
 const SLUG = /^[a-z][a-z0-9_]*$/;
@@ -38,6 +38,18 @@ export const DishSchema = z
     richness: unit,
     recognizability: unit,
     illustration: z.string().min(1).max(8),
+    /** Rights-cleared photo with provenance; the illustration stays as the fallback. */
+    photo: z
+      .object({
+        file: z.string().regex(/^photos\/dish-[a-z0-9-]+\.jpg$/, 'photo file must be "photos/dish-<id>.jpg"'),
+        source: z.string().regex(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/, "photo source must be its Wikimedia Commons file page"),
+        author: z.string().min(1).max(120),
+        license: z.enum(PHOTO_LICENSES),
+        licenseUrl: z.string().url().optional(),
+        changes: z.string().min(3).max(80),
+      })
+      .strict()
+      .optional(),
     attributes: z.record(attributeKey, unit.refine((v) => v > 0, "attribute strength must be > 0 (omit unknown attributes instead of using 0)")),
     ingredients: z.array(
       z.object({
@@ -52,6 +64,12 @@ export const DishSchema = z
       if (!Object.keys(dish.attributes).some((k) => k.startsWith(`${kind}:`))) {
         ctx.addIssue({ code: "custom", path: ["attributes"], message: `missing required ${kind} attribute` });
       }
+    }
+    if (dish.photo && dish.photo.file !== `photos/${dish.id}.jpg`) {
+      ctx.addIssue({ code: "custom", path: ["photo", "file"], message: `photo file must be photos/${dish.id}.jpg` });
+    }
+    if (dish.photo && /^CC BY/.test(dish.photo.license) && !dish.photo.licenseUrl) {
+      ctx.addIssue({ code: "custom", path: ["photo", "licenseUrl"], message: "CC BY / BY-SA photos need a licence link" });
     }
     const keys = dish.ingredients.map((i) => i.key);
     const dup = keys.find((k, i) => keys.indexOf(k) !== i);

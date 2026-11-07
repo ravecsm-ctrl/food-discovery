@@ -83,7 +83,25 @@ export function DishDetails({ dish, safety }: { dish: Dish; safety: SafetyAssess
         </p>
       </div>
       <SafetyNote safety={safety} />
-      <p className="text-[12px] text-muted">Image: illustration placeholder (no licensed photo yet).</p>
+      {dish.photo ? (
+        <p className="text-[12px] leading-relaxed text-muted" data-testid="photo-details">
+          Photo by {dish.photo.author},{" "}
+          {dish.photo.licenseUrl ? (
+            <a href={dish.photo.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline">
+              {dish.photo.license}
+            </a>
+          ) : (
+            dish.photo.license
+          )}
+          , via{" "}
+          <a href={dish.photo.source} target="_blank" rel="noopener noreferrer" className="underline">
+            Wikimedia Commons
+          </a>
+          . {dish.photo.changes}. A typical serving — yours may look different.
+        </p>
+      ) : (
+        <p className="text-[12px] text-muted">Image: illustration placeholder (no licensed photo yet).</p>
+      )}
     </div>
   );
 }

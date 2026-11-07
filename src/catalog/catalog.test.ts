@@ -69,3 +69,37 @@ describe("catalog (ENG-004, ENG-006, R-026)", () => {
     if (!r.ok) expect(r.errors.join("\n")).toContain(expected);
   });
 });
+
+describe("dish photos (PRRD §9.5: rights-cleared images with recorded provenance)", () => {
+  const photo = (id: string, extra: Record<string, unknown> = {}) => ({
+    file: `photos/${id}.jpg`,
+    source: "https://commons.wikimedia.org/wiki/File:Example.jpg",
+    author: "Example Author",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    changes: "Resized; shown cropped to fit",
+    ...extra,
+  });
+  const withPhoto = (p: (id: string) => Record<string, unknown>) => {
+    const f = clone(raw) as unknown as RawFile;
+    f.dishes[0].photo = p(f.dishes[0].id);
+    return validateCatalog(f);
+  };
+
+  it("accepts a free-licence Commons photo with credit and provenance", () => {
+    expect(withPhoto((id) => photo(id)).ok).toBe(true);
+    expect(withPhoto((id) => photo(id, { license: "CC0", licenseUrl: undefined })).ok).toBe(true);
+  });
+
+  it.each([
+    ["a non-free licence", (id: string) => photo(id, { license: "All rights reserved" }), "photo.license"],
+    ["a hot-linked or non-Commons source", (id: string) => photo(id, { source: "https://example.com/pic.jpg" }), "Wikimedia Commons"],
+    ["a file named for another dish", () => photo("dish-other"), "photo file must be photos/"],
+    ["a CC BY photo without a licence link", (id: string) => photo(id, { licenseUrl: undefined }), "need a licence link"],
+    ["a missing author", (id: string) => photo(id, { author: "" }), "photo.author"],
+  ])("rejects %s", (_label, p, expected) => {
+    const r = withPhoto(p);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join("\n")).toContain(expected);
+  });
+});

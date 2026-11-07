@@ -68,8 +68,26 @@ export interface Dish {
   /** 0–1 editorial estimate of local (PH) recognizability; used only for cold-start card choice. */
   recognizability: number;
   illustration: string;
+  /** Optional rights-cleared photo with recorded provenance (PRRD §9.5). Without one, the illustration is shown. */
+  photo?: DishPhoto;
   attributes: Record<string, number>;
   ingredients: IngredientClaim[];
+}
+
+/** Licences we accept for dish photos: free to reuse, credit shown where required. */
+export const PHOTO_LICENSES = ["CC0", "Public domain", "CC BY 2.0", "CC BY 2.5", "CC BY 3.0", "CC BY 4.0", "CC BY-SA 2.0", "CC BY-SA 2.5", "CC BY-SA 3.0", "CC BY-SA 4.0"] as const;
+export type PhotoLicense = (typeof PHOTO_LICENSES)[number];
+
+export interface DishPhoto {
+  /** Path under public/, e.g. "photos/dish-bulalo.jpg" (a resized copy kept with the app, never hot-linked). */
+  file: string;
+  /** The original file's page (e.g. on Wikimedia Commons). */
+  source: string;
+  author: string;
+  license: PhotoLicense;
+  licenseUrl?: string;
+  /** What we changed, as BY-SA asks (e.g. "Resized and cropped"). */
+  changes: string;
 }
 
 export interface Catalog {
