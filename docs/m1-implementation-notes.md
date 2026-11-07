@@ -206,3 +206,22 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 - Good meal fits now: breakfast 30 (was 18), lunch 165, merienda 61 (was 42), dinner 155, late night 56; the coverage test requires ≥ 25 for every meal again.
 - The fixed-order (baseline) v3 arm now also starts with good meal fits for its first 3 cards, as the adaptive arm does; it stays reaction-independent.
 - Supabase: reference migration `20261107000800_reference_catalog_v0_6_draft.sql`.
+
+## 14. Strong reactions — Love it / Not for a while / Never show again (owner request 2026-11-07)
+- Authorizes the PRRD's deferred strong-preference feedback (owner decisions in chat, 2026-11-07):
+  **★ Love it** saves a favourite; **⏸ Not for a while** hides the dish for 30 days, then it may return;
+  the note after it offers **Never show again**. All are undoable (card Undo, or Your data → Favourites and hidden dishes)
+  and back up to Supabase with the rest of the food memory.
+- Ordinary swipes are unchanged: a No is still "not tonight", a Yes is still not a favourite.
+- Engine (`strong-prefs.ts`, STRONG_PREFS_V0): hidden dishes are removed before ranking via
+  `SessionConstraints.hiddenDishIds` and counted separately (`hiddenByYou`) — never as dietary exclusions or safety claims.
+  Taste profile **taste-v1**: a favourite counts as half a 5★ eaten meal; an active hidden dish as half a 1★ meal
+  (still damped ×0.5); expired snoozes count for nothing. With no strong preferences, v1 = v0 exactly.
+  The card reaction itself has `explicit` strength (×1.5 current-appetite weight, already in the policy).
+  New reason `SAVED_FAVOURITE` ("One of your favourites."); the stable-taste sentence now reads "You've liked … dishes before."
+- Solo only. Together Mode shows no strong buttons and uses no stored favourites/hidden dishes (no personal history on a shared screen).
+- Storage: `fd.strongprefs.v1` (one per dish, latest wins); session codes `super_yes`/`super_no`.
+  Supabase migration `20261107000900`: `strong_preferences` table (RLS, no grants), `save_strong_preference` /
+  `delete_strong_preference` RPCs (consent, idempotency, validation), explicit-strength reactions round-trip,
+  `get_my_data` returns them, `delete_my_account` removes them.
+- Gestures: buttons and ↑/↓ keys only; no vertical swipe (the card scrolls vertically on phones).

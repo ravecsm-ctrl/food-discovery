@@ -3,6 +3,7 @@
 Authoritative specs: **PRRD V1.0** (product behavior — wins on conflict) and **ETD V1.0** (engineering design).
 Current authorized scope: **M0 + M1 (ENG-001 … ENG-019)**, the owner-approved memory update (notes §5),
 and **M2 — Persistence, Accounts and Memory (ENG-020 … ENG-027) with Supabase** (approved 2026-11-07; notes §7).
+Strong reactions (Love it / Not for a while / Never show again) approved 2026-11-07 (notes §14).
 M1 real-use check (ENG-019 gate 12) was waived by the product owner on 2026-11-07.
 Implementation notes, deviations and open issues: `docs/m1-implementation-notes.md`.
 
@@ -25,7 +26,7 @@ Implementation notes, deviations and open issues: `docs/m1-implementation-notes.
 Any database or service other than the approved Supabase project, servers/deployments other than GitHub Pages,
 households/partner linking, cuisine filter chips, Together/Individual (couples) modes, realtime,
 restaurant/delivery APIs, payments, weekly forecast, ML infra, paid AI calls, social/gamification,
-strong-preference (permanent) feedback UI, paid Supabase features. Do not add placeholder scaffolding for these.
+paid Supabase features. Do not add placeholder scaffolding for these.
 Do not invent product features or relax approved behavior; escalate scope/privacy/safety questions.
 
 ## Layout
