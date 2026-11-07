@@ -199,3 +199,10 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 - The home headline and results say which meal the picks suit; the meal choice is session-only and never stored.
 - **Gap found:** only 18 dishes fit breakfast well (silogs, lugaw, sandwiches) vs 25–150 for other meals — add Filipino breakfast/merienda staples (champorado, pandesal, taho, turon, etc.) in a future catalog update.
 - Supabase: reference migration `20261107000700_reference_catalog_v0_5_draft.sql` (catalog v0.5 dish rows unchanged; adds policies v3; v0.4 marked retired).
+
+## 13. Breakfast & merienda staples — catalog-v0.6 (approved 2026-11-07)
+
+- +17 Filipino dishes (242 total): champorado, pandesal with kesong puti, pandesal with corned beef, taho, tuyo and garlic rice, bibingka, puto bumbong, ensaymada, Spanish bread, turon, banana cue, kwek-kwek, fish balls, lugaw with tokwa't baboy, goto, sopas, halo-halo. Each has hand-set meal-time fits and alternate names; same conservative ingredient claims (banana cue lists none — unknown, not "free of").
+- Good meal fits now: breakfast 30 (was 18), lunch 165, merienda 61 (was 42), dinner 155, late night 56; the coverage test requires ≥ 25 for every meal again.
+- The fixed-order (baseline) v3 arm now also starts with good meal fits for its first 3 cards, as the adaptive arm does; it stays reaction-independent.
+- Supabase: reference migration `20261107000800_reference_catalog_v0_6_draft.sql`.

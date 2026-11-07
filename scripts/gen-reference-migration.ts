@@ -13,7 +13,7 @@ import { loadCatalog } from "../src/catalog/index.ts";
 import { POLICY_IDS, getPolicy } from "../src/engine/policy.ts";
 
 /** Catalog versions that may appear in on-device history. */
-const KNOWN_VERSIONS = ["catalog-v0.1-draft", "catalog-v0.2-draft", "catalog-v0.3-draft", "catalog-v0.4-draft"];
+const KNOWN_VERSIONS = ["catalog-v0.1-draft", "catalog-v0.2-draft", "catalog-v0.3-draft", "catalog-v0.4-draft", "catalog-v0.5-draft"];
 
 const q = (s: string) => `'${s.replaceAll("'", "''")}'`;
 

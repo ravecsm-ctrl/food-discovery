@@ -32,8 +32,8 @@ describe("meal times", () => {
     for (const mt of MEAL_TIMES) for (const d of catalog.dishes) expect(Math.abs(mealFit(d, mt))).toBeLessThanOrEqual(1);
   });
 
-  it("every meal time has enough good fits (breakfast is the thinnest — catalog gap noted)", () => {
-    for (const mt of MEAL_TIMES) expect(catalog.dishes.filter((d) => mealFit(d, mt) >= 0.4).length, mt).toBeGreaterThanOrEqual(mt === "breakfast" ? 15 : 25);
+  it("every meal time has plenty of good fits (catalog-v0.6 filled the breakfast gap)", () => {
+    for (const mt of MEAL_TIMES) expect(catalog.dishes.filter((d) => mealFit(d, mt) >= 0.4).length, mt).toBeGreaterThanOrEqual(25);
   });
 });
 
@@ -61,7 +61,7 @@ describe("v3 scoring and card order", () => {
         s = recordReaction(addExposure(s, next.dishId, NOW), "no", NOW);
       }
       expect(shown).toHaveLength(catalog.dishes.length); // nothing excluded
-      if (policy.startsWith("adaptive")) for (const id of shown.slice(0, 3)) expect(mealFit(dish(id), "breakfast")).toBeGreaterThanOrEqual(0.4);
+      for (const id of shown.slice(0, 3)) expect(mealFit(dish(id), "breakfast")).toBeGreaterThanOrEqual(0.4);
       const firstDemoted = shown.findIndex((id) => mealFit(dish(id), "breakfast") < -0.25);
       const lastOk = shown.map((id) => mealFit(dish(id), "breakfast") >= -0.25).lastIndexOf(true);
       expect(firstDemoted).toBeGreaterThan(lastOk);

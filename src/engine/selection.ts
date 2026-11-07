@@ -119,6 +119,13 @@ export function selectNextCard(session: DiscoverySession, deps: EngineDeps): Car
   if (deps.policy.cardSelection === "fixed") {
     const order = baselineSequence(eligible, deps, session.seed);
     const ok = new Set(fresh.map((d) => d.id));
+    // Like the adaptive cold start: the first few cards come from good meal fits (still a fixed,
+    // reaction-independent order, so the A/B comparison stays fair).
+    if (mtCfg.enabled && mt && activeReactions(session).length < deps.policy.nextCard.coldStartCards) {
+      const good = new Set(fresh.filter((d) => fitFor(d) >= 0.4).map((d) => d.id));
+      const first = good.size >= deps.policy.nextCard.coldStartCards * 2 ? order.find((id) => good.has(id)) : undefined;
+      if (first) return { dishId: first, reason: "fixed_sequence", q: null };
+    }
     const next = (order.find((id) => ok.has(id)) ?? order.find((id) => !shown.has(id) && !eatenRecently.has(id)) ?? order.find((id) => !shown.has(id))) as string;
     return { dishId: next, reason: "fixed_sequence", q: null };
   }

@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "catalog-v0.5-draft",
+  "catalogVersion": "catalog-v0.6-draft",
   "status": "draft",
   "provenance": {
     "attributeEvidence": "inferred",
@@ -1749,6 +1749,159 @@
       "aliases": ["tom kha", "coconut soup"],
       "attributes": { "ingredient:chicken": 1, "ingredient:coconut_milk": 1, "ingredient:mushroom": 0.4, "method:simmered": 1, "flavor:aromatic": 1, "flavor:sour": 0.5, "flavor:savory": 1, "texture:brothy": 1, "texture:creamy": 0.6, "structure:soup": 1 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "fish", "presence": "possible" }]
+    },
+    {
+      "id": "dish-champorado", "familyId": "porridge", "name": "Champorado", "cuisine": "filipino", "style": "comfort",
+      "description": "Chocolate rice porridge, often with evaporated milk and a side of crispy tuyo.",
+      "tags": ["sweet", "chocolatey", "warm"], "richness": 0.6, "recognizability": 0.9, "illustration": "🍫",
+      "aliases": ["chocolate porridge", "tsamporado"],
+      "mealTimes": { "breakfast": 0.9, "merienda": 0.8, "lunch": -0.3, "dinner": -0.5, "late_night": 0.2 },
+      "attributes": { "ingredient:rice": 1, "ingredient:chocolate": 1, "method:simmered": 1, "flavor:sweet": 1, "flavor:nutty": 0.3, "texture:creamy": 1, "texture:soft": 1, "structure:porridge": 1 },
+      "ingredients": [{ "key": "dairy", "presence": "possible" }, { "key": "fish", "presence": "possible" }]
+    },
+    {
+      "id": "dish-pandesal-with-kesong-puti", "familyId": "pandesal", "name": "Pandesal with Kesong Puti", "cuisine": "filipino", "style": "light_fresh",
+      "description": "Warm, soft pandesal rolls with fresh, mild white carabao's-milk cheese.",
+      "tags": ["soft", "milky", "mild"], "richness": 0.4, "recognizability": 0.9, "illustration": "🥖",
+      "aliases": ["pandesal", "pan de sal", "kesong puti"],
+      "mealTimes": { "breakfast": 0.95, "merienda": 0.8, "lunch": -0.1, "dinner": -0.5, "late_night": -0.2 },
+      "attributes": { "ingredient:bread_dough": 1, "ingredient:cheese": 0.7, "method:baked": 1, "flavor:savory": 0.6, "flavor:sweet": 0.3, "texture:soft": 1, "texture:creamy": 0.4, "structure:sandwich": 1 },
+      "ingredients": [{ "key": "gluten", "presence": "confirmed_present" }, { "key": "dairy", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }]
+    },
+    {
+      "id": "dish-pandesal-with-corned-beef", "familyId": "pandesal", "name": "Pandesal with Corned Beef", "cuisine": "filipino", "style": "comfort",
+      "description": "Soft pandesal rolls filled with sautéed corned beef and onion.",
+      "tags": ["savory", "soft"], "richness": 0.6, "recognizability": 0.85, "illustration": "🥖",
+      "aliases": ["pandesal", "pan de sal", "corned beef sandwich"],
+      "mealTimes": { "breakfast": 0.95, "merienda": 0.6, "lunch": 0.1, "dinner": -0.4, "late_night": 0.1 },
+      "attributes": { "ingredient:bread_dough": 1, "ingredient:beef": 0.7, "method:baked": 0.6, "method:stir_fried": 0.4, "flavor:savory": 1, "texture:soft": 1, "texture:tender": 0.4, "structure:sandwich": 1 },
+      "ingredients": [{ "key": "beef", "presence": "confirmed_present" }, { "key": "gluten", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }]
+    },
+    {
+      "id": "dish-taho", "familyId": null, "name": "Taho", "cuisine": "filipino", "style": "light_fresh",
+      "description": "Warm silken tofu with brown-sugar arnibal syrup and chewy sago pearls.",
+      "tags": ["sweet", "silky"], "richness": 0.3, "recognizability": 0.9, "illustration": "🥤",
+      "aliases": ["taho", "silken tofu"],
+      "mealTimes": { "breakfast": 0.85, "merienda": 0.75, "lunch": -0.4, "dinner": -0.6, "late_night": -0.4 },
+      "attributes": { "ingredient:tofu": 1, "method:steamed": 1, "flavor:sweet": 1, "texture:soft": 1, "texture:chewy": 0.4, "structure:street_snack": 1 },
+      "ingredients": [{ "key": "soy", "presence": "confirmed_present" }]
+    },
+    {
+      "id": "dish-tuyo-and-garlic-rice", "familyId": null, "name": "Tuyo and Garlic Rice", "cuisine": "filipino", "style": "comfort",
+      "description": "Crispy fried dried herring with garlic fried rice, tomato and a vinegar dip.",
+      "tags": ["salty", "crispy"], "richness": 0.45, "recognizability": 0.85, "illustration": "🐟",
+      "aliases": ["tuyo", "dried fish", "tuyosilog"],
+      "mealTimes": { "breakfast": 0.9, "lunch": 0.4, "merienda": -0.2, "dinner": 0.2, "late_night": 0.4 },
+      "attributes": { "ingredient:fish": 1, "ingredient:rice": 1, "method:fried": 1, "flavor:savory": 1, "flavor:umami": 0.6, "flavor:sour": 0.3, "flavor:garlicky": 0.5, "texture:crispy": 1, "texture:soft": 0.3, "structure:rice_meal": 1 },
+      "ingredients": [{ "key": "fish", "presence": "confirmed_present" }]
+    },
+    {
+      "id": "dish-bibingka", "familyId": "kakanin", "name": "Bibingka", "cuisine": "filipino", "style": "comfort",
+      "description": "Rice cake baked in banana leaf, topped with salted egg, cheese and grated coconut.",
+      "tags": ["sweet", "fluffy"], "richness": 0.6, "recognizability": 0.85, "illustration": "🥮",
+      "aliases": ["kakanin", "rice cake"],
+      "mealTimes": { "breakfast": 0.75, "merienda": 0.9, "lunch": -0.3, "dinner": -0.4, "late_night": 0.1 },
+      "attributes": { "ingredient:rice_cake": 1, "ingredient:egg": 0.4, "ingredient:cheese": 0.4, "method:baked": 1, "flavor:sweet": 1, "flavor:savory": 0.3, "texture:soft": 1, "structure:kakanin": 1 },
+      "ingredients": [{ "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }]
+    },
+    {
+      "id": "dish-puto-bumbong", "familyId": "kakanin", "name": "Puto Bumbong", "cuisine": "filipino", "style": "comfort",
+      "description": "Purple sticky rice steamed in bamboo, served with butter, muscovado and coconut.",
+      "tags": ["sweet", "chewy"], "richness": 0.5, "recognizability": 0.75, "illustration": "🍡",
+      "aliases": ["kakanin", "purple rice"],
+      "mealTimes": { "breakfast": 0.5, "merienda": 0.85, "lunch": -0.3, "dinner": -0.4, "late_night": 0.1 },
+      "attributes": { "ingredient:rice_cake": 1, "method:steamed": 1, "flavor:sweet": 1, "flavor:nutty": 0.3, "texture:chewy": 1, "texture:soft": 0.4, "structure:kakanin": 1 },
+      "ingredients": [{ "key": "dairy", "presence": "possible" }]
+    },
+    {
+      "id": "dish-ensaymada", "familyId": "pastry", "name": "Ensaymada", "cuisine": "filipino", "style": "rich_indulgent",
+      "description": "Soft, buttery brioche-style bun topped with butter, sugar and grated cheese.",
+      "tags": ["buttery", "sweet"], "richness": 0.75, "recognizability": 0.9, "illustration": "🥐",
+      "aliases": ["ensaimada"],
+      "mealTimes": { "breakfast": 0.8, "merienda": 0.9, "lunch": -0.3, "dinner": -0.5, "late_night": -0.1 },
+      "attributes": { "ingredient:bread_dough": 1, "ingredient:cheese": 0.4, "method:baked": 1, "flavor:sweet": 1, "flavor:savory": 0.3, "texture:soft": 1, "texture:creamy": 0.3, "structure:pastry": 1 },
+      "ingredients": [{ "key": "gluten", "presence": "confirmed_present" }, { "key": "dairy", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }]
+    },
+    {
+      "id": "dish-spanish-bread", "familyId": "pastry", "name": "Spanish Bread", "cuisine": "filipino", "style": "comfort",
+      "description": "Rolled soft bread with a sweet buttery breadcrumb filling.",
+      "tags": ["sweet", "buttery"], "richness": 0.6, "recognizability": 0.85, "illustration": "🥖",
+      "aliases": ["spanish bread"],
+      "mealTimes": { "breakfast": 0.6, "merienda": 0.85, "lunch": -0.3, "dinner": -0.5, "late_night": -0.1 },
+      "attributes": { "ingredient:bread_dough": 1, "method:baked": 1, "flavor:sweet": 1, "texture:soft": 1, "structure:pastry": 1 },
+      "ingredients": [{ "key": "gluten", "presence": "confirmed_present" }, { "key": "dairy", "presence": "possible" }, { "key": "egg", "presence": "possible" }]
+    },
+    {
+      "id": "dish-turon", "familyId": null, "name": "Turon", "cuisine": "filipino", "style": "street_food",
+      "description": "Banana and jackfruit wrapped in spring-roll wrapper, fried with a caramel crust.",
+      "tags": ["crispy", "caramel"], "richness": 0.6, "recognizability": 0.95, "illustration": "🍌",
+      "aliases": ["banana turon", "turon saging", "lumpiang saging"],
+      "mealTimes": { "breakfast": 0.1, "merienda": 0.95, "lunch": -0.3, "dinner": -0.5, "late_night": 0.2 },
+      "attributes": { "ingredient:fruit": 1, "ingredient:bread_dough": 0.5, "method:fried": 1, "flavor:sweet": 1, "texture:crispy": 1, "texture:chewy": 0.4, "structure:rolls": 1 },
+      "ingredients": [{ "key": "gluten", "presence": "possible" }]
+    },
+    {
+      "id": "dish-banana-cue", "familyId": null, "name": "Banana Cue", "cuisine": "filipino", "style": "street_food",
+      "description": "Deep-fried saba bananas skewered and coated in caramelized brown sugar.",
+      "tags": ["sweet", "sticky"], "richness": 0.5, "recognizability": 0.9, "illustration": "🍌",
+      "aliases": ["bananacue", "banana q", "saba"],
+      "mealTimes": { "breakfast": 0.2, "merienda": 0.95, "lunch": -0.3, "dinner": -0.5, "late_night": 0.1 },
+      "attributes": { "ingredient:fruit": 1, "method:fried": 1, "flavor:sweet": 1, "texture:chewy": 1, "texture:crispy": 0.3, "structure:skewers": 1 },
+      "ingredients": []
+    },
+    {
+      "id": "dish-kwek-kwek", "familyId": null, "name": "Kwek-Kwek", "cuisine": "filipino", "style": "street_food",
+      "description": "Quail eggs in bright orange batter, fried crisp, with spiced vinegar dip.",
+      "tags": ["crispy", "tangy"], "richness": 0.55, "recognizability": 0.85, "illustration": "🥚",
+      "aliases": ["kwekkwek", "kwek kwek", "tokneneng", "quail eggs"],
+      "mealTimes": { "breakfast": -0.2, "merienda": 0.9, "lunch": -0.2, "dinner": -0.3, "late_night": 0.75 },
+      "attributes": { "ingredient:egg": 1, "method:fried": 1, "flavor:savory": 1, "flavor:sour": 0.4, "texture:crispy": 1, "texture:soft": 0.4, "structure:street_snack": 1 },
+      "ingredients": [{ "key": "egg", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }]
+    },
+    {
+      "id": "dish-fish-balls", "familyId": null, "name": "Fish Balls", "cuisine": "filipino", "style": "street_food",
+      "description": "Street-cart fried fish balls with sweet, spicy or vinegar sauce.",
+      "tags": ["chewy", "saucy"], "richness": 0.45, "recognizability": 0.95, "illustration": "🍢",
+      "aliases": ["fishball", "fish ball", "fishballs", "street food"],
+      "mealTimes": { "breakfast": -0.2, "merienda": 0.9, "lunch": -0.2, "dinner": -0.3, "late_night": 0.7 },
+      "attributes": { "ingredient:fish": 1, "method:fried": 1, "flavor:savory": 1, "flavor:sweet": 0.4, "flavor:spicy": 0.3, "texture:chewy": 1, "texture:saucy": 0.4, "structure:street_snack": 1 },
+      "ingredients": [{ "key": "fish", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
+    },
+    {
+      "id": "dish-lugaw-with-tokwat-baboy", "familyId": "porridge", "name": "Lugaw with Tokwa't Baboy", "cuisine": "filipino", "style": "comfort",
+      "description": "Savory rice porridge with fried tofu and pork in soy-vinegar.",
+      "tags": ["savory", "tangy"], "richness": 0.55, "recognizability": 0.9, "illustration": "🥣",
+      "aliases": ["lugaw", "tokwat baboy", "tokwa't baboy", "rice porridge"],
+      "mealTimes": { "breakfast": 0.7, "merienda": 0.8, "lunch": 0.1, "dinner": 0, "late_night": 0.85 },
+      "attributes": { "ingredient:rice": 1, "ingredient:tofu": 0.5, "ingredient:pork": 0.5, "method:simmered": 1, "method:fried": 0.3, "flavor:savory": 1, "flavor:sour": 0.3, "flavor:gingery": 0.3, "texture:creamy": 1, "texture:crispy": 0.3, "structure:porridge": 1 },
+      "ingredients": [{ "key": "pork", "presence": "possible" }, { "key": "soy", "presence": "confirmed_present" }, { "key": "fish", "presence": "possible" }]
+    },
+    {
+      "id": "dish-goto", "familyId": "porridge", "name": "Goto", "cuisine": "filipino", "style": "comfort",
+      "description": "Gingery rice porridge with tender beef tripe, toasted garlic and spring onion.",
+      "tags": ["gingery", "hearty"], "richness": 0.6, "recognizability": 0.8, "illustration": "🥣",
+      "aliases": ["goto", "beef tripe porridge", "lugaw"],
+      "mealTimes": { "breakfast": 0.7, "merienda": 0.75, "lunch": 0.2, "dinner": 0.1, "late_night": 0.85 },
+      "attributes": { "ingredient:rice": 1, "ingredient:beef": 0.7, "method:simmered": 1, "flavor:gingery": 1, "flavor:savory": 1, "flavor:garlicky": 0.4, "texture:creamy": 1, "texture:chewy": 0.4, "structure:porridge": 1 },
+      "ingredients": [{ "key": "beef", "presence": "confirmed_present" }, { "key": "fish", "presence": "possible" }]
+    },
+    {
+      "id": "dish-sopas", "familyId": null, "name": "Sopas", "cuisine": "filipino", "style": "comfort",
+      "description": "Creamy chicken macaroni soup with milk, vegetables and hotdog.",
+      "tags": ["creamy", "homey"], "richness": 0.6, "recognizability": 0.9, "illustration": "🥣",
+      "aliases": ["chicken macaroni soup", "macaroni soup"],
+      "mealTimes": { "breakfast": 0.7, "merienda": 0.6, "lunch": 0.4, "dinner": 0.3, "late_night": 0.3 },
+      "attributes": { "ingredient:pasta": 1, "ingredient:chicken": 0.6, "ingredient:vegetables": 0.3, "method:simmered": 1, "flavor:savory": 1, "flavor:sweet": 0.2, "texture:creamy": 1, "texture:brothy": 1, "structure:soup": 1 },
+      "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "dairy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "pork", "presence": "possible" }]
+    },
+    {
+      "id": "dish-halo-halo", "familyId": null, "name": "Halo-Halo", "cuisine": "filipino", "style": "sharing",
+      "description": "Shaved ice with sweet beans, jellies, fruit, leche flan, ube and evaporated milk.",
+      "tags": ["sweet", "cold", "creamy"], "richness": 0.6, "recognizability": 1, "illustration": "🍧",
+      "aliases": ["halo halo", "halohalo", "shaved ice"],
+      "mealTimes": { "breakfast": -0.5, "merienda": 0.9, "lunch": 0.2, "dinner": -0.2, "late_night": -0.1 },
+      "attributes": { "ingredient:fruit": 1, "ingredient:beans": 0.4, "method:raw": 1, "flavor:sweet": 1, "texture:creamy": 1, "texture:chewy": 0.4, "structure:dessert": 1 },
+      "ingredients": [{ "key": "dairy", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }]
     }
   ]
 }
