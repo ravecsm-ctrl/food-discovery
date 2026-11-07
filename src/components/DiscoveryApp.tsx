@@ -17,10 +17,14 @@ import {
   explainItem,
   cuisineName,
   hasFocus,
+  MEAL_TIMES,
+  MEAL_TIME_LABELS,
+  mealTimeAt,
   ownDishSummary,
   tasteProfile,
   CRAVINGS,
   type CravingKey,
+  type MealTime,
   type SessionFocus,
   getPolicy,
   quickPicks,
@@ -145,6 +149,10 @@ export function DiscoveryApp() {
   const [togetherSetup, setTogetherSetup] = useState<{ names: ParticipantNames; partner: RestrictionKey[] } | null>(null);
   /** "In the mood for…" — kept until changed or the app is reopened; never stored. */
   const [focus, setFocus] = useState<SessionFocus>({ cuisines: [], cravings: [] });
+  /** Which meal to suggest for: "auto" follows the clock; a choice lasts until changed or the app reopens. */
+  const [mealChoice, setMealChoice] = useState<MealTime | "auto">("auto");
+  const [clockMeal, setClockMeal] = useState<MealTime>("dinner");
+  const mealTime: MealTime = mealChoice === "auto" ? clockMeal : mealChoice;
   const [moodOpen, setMoodOpen] = useState(false);
   const [disagreeOpen, setDisagreeOpen] = useState(false);
   const [jointConfirm, setJointConfirm] = useState<{ dishId: string; rank: number } | null>(null);
@@ -156,6 +164,8 @@ export function DiscoveryApp() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRestrictionState(getRestrictions());
     setPending(pendingOutcome());
+    const now = new Date();
+    setClockMeal(mealTimeAt(now.getHours(), now.getMinutes()));
     startCloudBackup();
     startCloudSync();
     void navigator.storage?.persist?.().catch(() => undefined);
@@ -245,7 +255,14 @@ export function DiscoveryApp() {
       seed: newSeed(),
       policyId,
       catalogVersion: catalog.catalogVersion,
-      constraints: { ...DEFAULT_CONSTRAINTS, avoidedIngredients: restrictions, softAttributeWeights: contextWeights(new Date()), focus },
+      constraints: {
+        ...DEFAULT_CONSTRAINTS,
+        avoidedIngredients: restrictions,
+        // v3+ policies use meal-time fit; older ones keep the simple morning boost.
+        softAttributeWeights: policy.mealTime.enabled ? {} : contextWeights(new Date()),
+        focus,
+        mealTime,
+      },
       now: nowIso(),
       initialBudget: policy.session.initialBudget,
     });
@@ -270,7 +287,7 @@ export function DiscoveryApp() {
     setPhase("discover");
     advance(s, {}, [], asg);
     setAnnounce("Discovery started.");
-  }, [advance, focus, persist, restrictions]);
+  }, [advance, focus, mealTime, persist, restrictions]);
 
   /** Together Mode on one phone (PRRD J-03): both people's restrictions apply; no personal history is used. */
   const startTogether = useCallback(
@@ -284,7 +301,7 @@ export function DiscoveryApp() {
         seed: newSeed(),
         policyId,
         catalogVersion: catalog.catalogVersion,
-        constraints: { ...DEFAULT_CONSTRAINTS, avoidedIngredients: [...new Set([...restrictions, ...partnerRestrictions])], focus },
+        constraints: { ...DEFAULT_CONSTRAINTS, avoidedIngredients: [...new Set([...restrictions, ...partnerRestrictions])], focus, mealTime },
         now: nowIso(),
         initialBudget: policy.session.initialBudget,
         mode: "together",
@@ -301,7 +318,7 @@ export function DiscoveryApp() {
       advance(s, {}, [], asg);
       setAnnounce(`Together mode started for ${names.a} and ${names.b}.`);
     },
-    [advance, focus, restrictions],
+    [advance, focus, mealTime, restrictions],
   );
 
   const reactSplit = useCallback(
@@ -480,8 +497,13 @@ export function DiscoveryApp() {
             onStart={() => setPhase("recent-meals")}
             onStartTogether={() => setPhase("together-setup")}
             focus={focus}
+            mealTime={mealTime}
+            mealAuto={mealChoice === "auto"}
             onMood={() => setMoodOpen(true)}
-            onClearMood={() => setFocus({ cuisines: [], cravings: [] })}
+            onClearMood={() => {
+              setFocus({ cuisines: [], cravings: [] });
+              setMealChoice("auto");
+            }}
             onRestrictions={() => setRestrictionsOpen(true)}
             onPendingAte={(ctx) => confirmMeal(ctx, ctx.dishId, null)}
             onPendingOther={(ctx) => {
@@ -627,6 +649,7 @@ export function DiscoveryApp() {
             onChoose={choose}
             names={session.mode === "together" ? pair : null}
             morningBoost={Object.keys(session.constraints.softAttributeWeights).length > 0}
+            mealTime={getPolicy(session.policyId).mealTime.enabled ? (session.constraints.mealTime ?? null) : null}
             focus={session.constraints.focus ?? null}
             onKeepDiscovering={keepDiscovering}
             onUndo={canUndo(session) ? undo : undefined}
@@ -701,7 +724,7 @@ export function DiscoveryApp() {
       </Sheet>
 
       <Sheet open={moodOpen} onClose={() => setMoodOpen(false)} title="In the mood for…">
-        <MoodPicker value={focus} onChange={setFocus} onDone={() => setMoodOpen(false)} />
+        <MoodPicker value={focus} onChange={setFocus} meal={mealChoice} clockMeal={clockMeal} onMeal={setMealChoice} onDone={() => setMoodOpen(false)} />
       </Sheet>
 
       <RestrictionsSheet
@@ -726,6 +749,8 @@ function Home(props: {
   onStart: () => void;
   onStartTogether: () => void;
   focus: SessionFocus;
+  mealTime: MealTime;
+  mealAuto: boolean;
   onMood: () => void;
   onClearMood: () => void;
   onRestrictions: () => void;
@@ -775,22 +800,20 @@ function Home(props: {
             );
           })}
         </div>
-        <h1 className="font-display text-[2.6rem] font-semibold leading-[1.05]">What sounds good tonight?</h1>
+        <h1 className="font-display text-[2.6rem] font-semibold leading-[1.05]">{HEADLINES[props.mealTime]}</h1>
         <p className="mt-3 text-[17px] leading-relaxed text-muted">
           React to a few dishes. We&apos;ll learn what you&apos;re in the mood for right now and suggest one to three ideas.
         </p>
         <div className="mt-6 flex items-center gap-2" data-testid="mood-summary">
           <button type="button" onClick={props.onMood} className="min-w-0 flex-1 truncate rounded-full bg-surface px-4 py-2.5 text-left text-[15px] ring-1 ring-line">
+            <span className="font-semibold">{MEAL_TIME_LABELS[props.mealTime]}</span>
             {hasFocus(props.focus) ? (
-              <>
-                <span className="text-muted">Tonight: </span>
-                <span className="font-semibold">{focusLabel(props.focus)}</span>
-              </>
+              <span className="font-semibold"> · {focusLabel(props.focus)}</span>
             ) : (
-              <span className="text-muted">In the mood for something? (optional)</span>
+              <span className="text-muted"> · in the mood for something?</span>
             )}
           </button>
-          {hasFocus(props.focus) && (
+          {(hasFocus(props.focus) || !props.mealAuto) && (
             <button type="button" onClick={props.onClearMood} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted ring-1 ring-line" aria-label="Clear mood">
               ✕
             </button>
@@ -835,6 +858,8 @@ function Results(props: {
   /** Together Mode names; null for solo. */
   names: ParticipantNames | null;
   morningBoost: boolean;
+  /** v3+: the meal these picks are for. */
+  mealTime: MealTime | null;
   focus: SessionFocus | null;
   onKeepDiscovering: (dismissed: boolean) => void;
   onUndo?: () => void;
@@ -866,7 +891,8 @@ function Results(props: {
         </p>
       )}
       {hasFocus(props.focus) && <p className="mt-2 text-sm text-muted">Showing only: {focusLabel(props.focus)}.</p>}
-      {props.morningBoost && <p className="mt-1 text-sm text-muted">Morning: breakfast-style dishes get a small boost.</p>}
+      {props.mealTime && <p className="mt-1 text-sm text-muted">Suited to {MEAL_TIME_LABELS[props.mealTime].toLowerCase()} — change it in &ldquo;In the mood for…&rdquo;.</p>}
+      {!props.mealTime && props.morningBoost && <p className="mt-1 text-sm text-muted">Morning: breakfast-style dishes get a small boost.</p>}
       {run && run.excludedByConstraints > 0 && (
         <p className="mt-2 text-sm text-muted">
           {run.excludedByConstraints} dish{run.excludedByConstraints === 1 ? " was" : "es were"} hidden because of {together ? "your dietary restrictions (both of you)" : "your dietary restrictions"}.
@@ -1178,12 +1204,27 @@ function TogetherSetup(props: { ownRestrictions: RestrictionKey[]; onStart: (nam
   );
 }
 
+const HEADLINES: Record<MealTime, string> = {
+  breakfast: "What sounds good for breakfast?",
+  lunch: "What sounds good for lunch?",
+  merienda: "Merienda time?",
+  dinner: "What sounds good tonight?",
+  late_night: "Late-night craving?",
+};
+
 function focusLabel(f: SessionFocus): string {
   return [...f.cuisines.map(cuisineName), ...f.cravings.map((c) => CRAVINGS[c].label)].join(" · ");
 }
 
 /** "In the mood for…": optional cuisines and cravings for tonight (session only; not a dietary rule). */
-function MoodPicker(props: { value: SessionFocus; onChange: React.Dispatch<React.SetStateAction<SessionFocus>>; onDone: () => void }) {
+function MoodPicker(props: {
+  value: SessionFocus;
+  onChange: React.Dispatch<React.SetStateAction<SessionFocus>>;
+  meal: MealTime | "auto";
+  clockMeal: MealTime;
+  onMeal: (m: MealTime | "auto") => void;
+  onDone: () => void;
+}) {
   const { value } = props;
   // Functional updates so quick successive taps never drop a choice.
   const toggleCuisine = (c: string) =>
@@ -1196,6 +1237,20 @@ function MoodPicker(props: { value: SessionFocus; onChange: React.Dispatch<React
     <div data-testid="mood-picker">
       <p className="text-sm text-muted">Narrow tonight&apos;s cards. Pick any — choices in a row are alternatives. Just for this session.</p>
       <fieldset className="mt-3">
+        <legend className="text-sm font-semibold">Which meal</legend>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <button type="button" aria-pressed={props.meal === "auto"} onClick={() => props.onMeal("auto")} className={chip(props.meal === "auto")}>
+            Now ({MEAL_TIME_LABELS[props.clockMeal].toLowerCase()})
+          </button>
+          {MEAL_TIMES.map((m) => (
+            <button key={m} type="button" aria-pressed={props.meal === m} onClick={() => props.onMeal(m)} className={chip(props.meal === m)}>
+              {MEAL_TIME_LABELS[m]}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-muted">Dishes that suit this meal rank higher; nothing is hidden.</p>
+      </fieldset>
+      <fieldset className="mt-4">
         <legend className="text-sm font-semibold">Cuisine</legend>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {CUISINE_CHOICES.map((c) => (

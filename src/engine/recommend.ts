@@ -12,6 +12,7 @@ import { dishSimilarity, sharedAttributes } from "./similarity.ts";
 import type { Dish, FulfillmentStatus, ReasonCode, SafetyAssessment } from "./types.ts";
 import { tieBreak } from "./rng.ts";
 import { depsForSession, jointScore, participantUsers } from "./together.ts";
+import { mealFit, type MealTime } from "./meal-time.ts";
 
 export interface RecommendationItem {
   rank: number;
@@ -29,6 +30,8 @@ export interface RecommendationItem {
     varietyFrom: string[];
     /** Qualities of this dish the person has rated highly before (long-term taste). */
     stableFrom: string[];
+    /** The meal this dish is a good fit for (when MEAL_TIME_FIT applies). */
+    mealTime?: MealTime;
   };
   score: ScoreBreakdown;
 }
@@ -88,6 +91,7 @@ function reasonCodesFor(
     for (const id of recentDishIds) maxSim = Math.max(maxSim, dishSimilarity(deps.catalog, score.dishId, id, deps.policy.similarityKindWeights));
     if (maxSim <= r.varietyMaxSimilarityToRecent) codes.push("RECENT_FOOD_VARIETY");
   }
+  if (deps.policy.mealTime.enabled && score.mealFit >= deps.policy.mealTime.reasonMin) codes.push("MEAL_TIME_FIT");
   if (eligibility.fulfillment !== "verified") codes.push("FULFILLMENT_UNVERIFIED");
   if (tentative) codes.push("INSUFFICIENT_EVIDENCE");
   return codes;
@@ -158,6 +162,7 @@ export function recommend(session: DiscoverySession, deps: EngineDeps): Recommen
         recentMealsConsidered: recent.length,
         varietyFrom,
         stableFrom: stableEvidence(dish, deps.user.stableAttributeWeights),
+        ...(session.constraints.mealTime ? { mealTime: session.constraints.mealTime } : {}),
       },
       score,
     };
@@ -236,11 +241,15 @@ export function quickPicks(session: DiscoverySession, deps: EngineDeps): Recomme
   // Picks must be grounded in recognized meals; free-text-only history gives no attribute evidence.
   if (!cfg.enabled || load.load.size === 0) return { ...base, items: [], noMatch: true };
 
+  // v3+: quick picks also suit the meal (unsuitable dishes are skipped, good fits rank higher).
+  const mt = session.constraints.mealTime;
+  const mtCfg = deps.policy.mealTime;
+  const fitOf = (d: Dish) => (mtCfg.enabled && mt ? mealFit(d, mt) : 0);
   const ranked = candidates.eligible
-    .filter((d) => !eatenRecently.has(d.id))
+    .filter((d) => !eatenRecently.has(d.id) && fitOf(d) >= (mtCfg.enabled && mt ? mtCfg.demoteBelow : -1))
     .map((d) => {
       const fatigue = dishFatigue(d, load, cfg);
-      return { d, fatigue, pick: 0.65 * (1 - fatigue) + 0.35 * d.recognizability };
+      return { d, fatigue, pick: 0.65 * (1 - fatigue) + 0.35 * d.recognizability + 0.3 * fitOf(d) };
     })
     .filter((x) => x.fatigue <= cfg.freshMax)
     .sort((a, b) => b.pick - a.pick || tieBreak(session.seed, b.d.id) - tieBreak(session.seed, a.d.id));
@@ -263,6 +272,7 @@ export function quickPicks(session: DiscoverySession, deps: EngineDeps): Recomme
     const score = scoreDish(d, inputs);
     const reasonCodes: ReasonCode[] = [];
     if (varietyFrom.length > 0) reasonCodes.push("RECENT_FOOD_VARIETY");
+    if (mtCfg.enabled && score.mealFit >= mtCfg.reasonMin) reasonCodes.push("MEAL_TIME_FIT");
     reasonCodes.push("FULFILLMENT_UNVERIFIED", "INSUFFICIENT_EVIDENCE");
     return {
       rank: i + 1,
@@ -271,7 +281,7 @@ export function quickPicks(session: DiscoverySession, deps: EngineDeps): Recomme
       fulfillmentStatus: eligibility.fulfillment,
       safety: eligibility.safety,
       reasonCodes,
-      evidence: { likedSimilar: [], recentMealsConsidered: recent.length, varietyFrom , stableFrom: [] },
+      evidence: { likedSimilar: [], recentMealsConsidered: recent.length, varietyFrom, stableFrom: [], ...(mt ? { mealTime: mt } : {}) },
       score,
     };
   });

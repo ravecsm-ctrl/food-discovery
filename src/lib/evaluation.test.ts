@@ -46,7 +46,7 @@ describe("ENG-018 evaluation records", () => {
     expect(base.sessions).toBe(1);
     expect(adapt.sessions).toBe(1);
     expect(base.yesRate).toBe(0.5);
-    expect(sum.find((x) => x.policyId === "adaptive-v2")!.sessions).toBe(0);
+    expect(sum.find((x) => x.policyId === "adaptive-v3")!.sessions).toBe(0); // active arm with no sessions yet
   });
 
   it("missing ratings are absent, not negative", () => {
@@ -71,6 +71,6 @@ describe("ENG-018 evaluation records", () => {
   });
 
   it("rotation alternates between the active comparison arms", () => {
-    expect([0, 1, 2, 3].map(rotatePolicy)).toEqual(["baseline-fixed-v2", "adaptive-v2", "baseline-fixed-v2", "adaptive-v2"]);
+    expect([0, 1, 2, 3].map(rotatePolicy)).toEqual(["baseline-fixed-v3", "adaptive-v3", "baseline-fixed-v3", "adaptive-v3"]);
   });
 });

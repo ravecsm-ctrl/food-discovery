@@ -190,3 +190,12 @@ Scope: ENG-028 (Together Mode) and the Together part of ENG-032 (joint ranking) 
 - **"In the mood for…" (`src/engine/mood.ts`):** optional cuisines and cravings (soup, noodles, rice, burger/sandwich/wrap, grilled, fried, spicy, seafood, light & fresh, comfort) narrow tonight's cards; alternatives within a row, all rows together; live "N dishes match". Counted separately from dietary exclusions (no false "hidden by restrictions"); dietary exclusions still apply inside the focus. Session-only, never stored or synced.
 - **Morning context:** 05:00–10:30 local, a small soft boost (softContext, weight 0.10) for silogs, porridge and sandwiches; results say so.
 - Not changed: quick picks still rank by freshness and familiarity only; Together Mode still uses no personal history (no taste profile).
+
+## 12. Meal-time fit — policies v3 (owner request 2026-11-07)
+
+- **What:** each session is for a meal — breakfast (05:00–10:30), lunch (–14:30), merienda (–17:30), dinner (–22:00), late night — from the phone's clock, or chosen in "In the mood for… → Which meal". `src/engine/meal-time.ts` rates every dish −1..1 per meal from general rules on dish type and style (silog/porridge → breakfast; rice, noodle and sandwich meals → lunch; snacks, dumplings, pancit → merienda; stews, sizzling, grilled and sharing plates → dinner; noodle soups, silog, pulutan → late night) plus **31 per-dish exceptions** in catalog-v0.5 (`mealTimes`) for local habits.
+- **New policies `baseline-fixed-v3` / `adaptive-v3`** (now the active comparison arms; v2 kept for history): utility += 0.15 × fit; dishes with fit < −0.25 wait at the back of the card queue in **both** arms (never excluded); cold-start cards come from good fits when there are enough; quick picks skip unsuitable dishes and favour good fits; a grounded reason "A good fit for dinner." at fit ≥ 0.6 (new code `MEAL_TIME_FIT`, an extension of the ETD §8.11 set). v3 replaces the v2-era morning soft boost.
+- Tonight's swipes still dominate (0.45 vs 0.15): a clear "yes" to a dinner dish at breakfast is still recommended (test).
+- The home headline and results say which meal the picks suit; the meal choice is session-only and never stored.
+- **Gap found:** only 18 dishes fit breakfast well (silogs, lugaw, sandwiches) vs 25–150 for other meals — add Filipino breakfast/merienda staples (champorado, pandesal, taho, turon, etc.) in a future catalog update.
+- Supabase: reference migration `20261107000700_reference_catalog_v0_5_draft.sql` (catalog v0.5 dish rows unchanged; adds policies v3; v0.4 marked retired).

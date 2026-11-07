@@ -5,6 +5,7 @@
  *   P stable preference, C current appetite, X soft context, N novelty, R exposure adjustment.
  * Scores are NOT probabilities and must never be shown as percentages.
  */
+import { mealFit, type MealTime } from "./meal-time.ts";
 import { dishFatigue, fatigueAdjustment, recentLoad } from "./fatigue.ts";
 import { clamp, dishSimilarity } from "./similarity.ts";
 import type { PolicyConfig } from "./policy.ts";
@@ -22,6 +23,8 @@ export interface ScoreBreakdown {
   exposure: number;
   exposureAdjustment: number;
   utility: number;
+  /** Meal-time fit of the dish for this session's meal (−1..1; 0 when not used). */
+  mealFit: number;
   /** Positively reacted dishes that meaningfully support this dish (for grounded reasons). */
   supportingLikes: Array<{ dishId: string; similarity: number; by?: "a" | "b" }>;
 }
@@ -34,6 +37,8 @@ export interface ScoringInputs {
   /** Only ACTIVE reactions are considered. Invalidated reactions have no effect. */
   reactions: readonly Reaction[];
   now: string;
+  /** The meal this session is for (v3+ meal-time fit). */
+  mealTime?: MealTime;
 }
 
 /** Weighted alignment between a weight map (-1..1) and dish attributes (0..1); 0 when no weights. */
@@ -159,8 +164,10 @@ export function scoreDish(dish: Dish, inputs: ScoringInputs): ScoreBreakdown {
     exposure = dishFatigue(dish, recent, inputs.policy.fatigue);
     adjustment = fatigueAdjustment(exposure, recent, inputs.policy.fatigue, current, inputs.user.varietySeeking ?? 1);
   }
-  const utility = clamp(w.stable * stable + w.current * current + w.softContext * softContext + w.novelty * novelty + adjustment, -1, 1);
-  return { dishId: dish.id, stable, current, currentEvidence, softContext, novelty, exposure, exposureAdjustment: adjustment, utility, supportingLikes };
+  const mt = inputs.policy.mealTime;
+  const mealFitValue = mt.enabled && inputs.mealTime ? mealFit(dish, inputs.mealTime) : 0;
+  const utility = clamp(w.stable * stable + w.current * current + w.softContext * softContext + w.novelty * novelty + adjustment + mt.weight * mealFitValue, -1, 1);
+  return { dishId: dish.id, stable, current, currentEvidence, softContext, novelty, exposure, exposureAdjustment: adjustment, mealFit: mealFitValue, utility, supportingLikes };
 }
 
 export const EMPTY_USER: UserModel = { stableAttributeWeights: {}, confirmedMeals: [], noveltyPreference: 0.5 };

@@ -14,7 +14,7 @@ test("'In the mood for…' narrows tonight's cards and says so", async ({ page }
   await picker.getByRole("button", { name: "Noodles", exact: true }).click();
   await expect(picker.getByTestId("mood-count")).toHaveText(/^\d+ dish(es)? match\.$/);
   await picker.getByRole("button", { name: "Done" }).click();
-  await expect(page.getByTestId("mood-summary")).toContainText("Tonight: Japanese · Noodles");
+  await expect(page.getByTestId("mood-summary")).toContainText("Japanese · Noodles");
 
   await page.getByRole("button", { name: "Start discovering" }).click();
   await page.getByRole("button", { name: "Skip — start swiping" }).click();

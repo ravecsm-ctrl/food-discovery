@@ -30,6 +30,12 @@ export interface PolicyConfig {
   fatigue: FatigueConfig;
   /** Offer quick picks from recent meals before swiping. */
   quickPicks: boolean;
+  /**
+   * Meal-time fit (v3+): utility += weight × fit(dish, session meal time); dishes below `demoteBelow`
+   * go to the back of the card queue in BOTH card policies (arms stay comparable); a reason is shown
+   * at fit ≥ reasonMin. Never excludes a dish.
+   */
+  mealTime: { enabled: boolean; weight: number; demoteBelow: number; reasonMin: number };
   /** ETD §8.5 conservative exposure heuristic. */
   exposure: {
     enabled: boolean;
@@ -136,6 +142,8 @@ const EXPOSURE_ON: PolicyConfig["exposure"] = {
 };
 
 const EXPOSURE_OFF: PolicyConfig["exposure"] = { ...EXPOSURE_ON, enabled: false };
+const MEAL_TIME_OFF: PolicyConfig["mealTime"] = { enabled: false, weight: 0, demoteBelow: -1, reasonMin: 1 };
+const MEAL_TIME_V3: PolicyConfig["mealTime"] = { enabled: true, weight: 0.15, demoteBelow: -0.25, reasonMin: 0.6 };
 const FATIGUE_OFF: FatigueConfig = { ...FATIGUE_V2, enabled: false };
 
 /** ETD §8.8 taken literally. Kept for comparison; see D-05 for why it under-adapts. */
@@ -152,6 +160,7 @@ export const POLICIES: Record<string, PolicyConfig> = {
     exposure: EXPOSURE_OFF,
     fatigue: FATIGUE_OFF,
     quickPicks: false,
+    mealTime: MEAL_TIME_OFF,
     ...shared(NORMALIZED),
   },
   "adaptive-v0": {
@@ -162,6 +171,7 @@ export const POLICIES: Record<string, PolicyConfig> = {
     exposure: EXPOSURE_OFF,
     fatigue: FATIGUE_OFF,
     quickPicks: false,
+    mealTime: MEAL_TIME_OFF,
     ...shared(ETD_LITERAL),
   },
   "adaptive-v1": {
@@ -172,6 +182,7 @@ export const POLICIES: Record<string, PolicyConfig> = {
     exposure: EXPOSURE_OFF,
     fatigue: FATIGUE_OFF,
     quickPicks: false,
+    mealTime: MEAL_TIME_OFF,
     ...shared(NORMALIZED),
   },
   "adaptive-exposure-v1": {
@@ -182,6 +193,7 @@ export const POLICIES: Record<string, PolicyConfig> = {
     exposure: EXPOSURE_ON,
     fatigue: FATIGUE_OFF,
     quickPicks: false,
+    mealTime: MEAL_TIME_OFF,
     ...shared(NORMALIZED),
   },
   "baseline-fixed-v2": {
@@ -192,6 +204,7 @@ export const POLICIES: Record<string, PolicyConfig> = {
     exposure: EXPOSURE_OFF,
     fatigue: FATIGUE_V2,
     quickPicks: true,
+    mealTime: MEAL_TIME_OFF,
     ...shared(NORMALIZED),
   },
   "adaptive-v2": {
@@ -202,12 +215,35 @@ export const POLICIES: Record<string, PolicyConfig> = {
     exposure: EXPOSURE_OFF,
     fatigue: FATIGUE_V2,
     quickPicks: true,
+    mealTime: MEAL_TIME_OFF,
+    ...shared(NORMALIZED),
+  },
+  "baseline-fixed-v3": {
+    id: "baseline-fixed-v3",
+    label: "Baseline + taste fatigue + meal-time fit — fixed diverse sequence",
+    experimentArm: "A/B with taste fatigue v2, quick picks and meal-time fit",
+    cardSelection: "fixed",
+    exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_V2,
+    quickPicks: true,
+    mealTime: MEAL_TIME_V3,
+    ...shared(NORMALIZED),
+  },
+  "adaptive-v3": {
+    id: "adaptive-v3",
+    label: "Adaptive + taste fatigue + meal-time fit — next card responds to reactions",
+    experimentArm: "C/D with taste fatigue v2, quick picks and meal-time fit",
+    cardSelection: "adaptive",
+    exposure: EXPOSURE_OFF,
+    fatigue: FATIGUE_V2,
+    quickPicks: true,
+    mealTime: MEAL_TIME_V3,
     ...shared(NORMALIZED),
   },
 };
 
 /** Policies used for new sessions under rotation (the comparison arms). */
-export const ACTIVE_POLICY_IDS = ["baseline-fixed-v2", "adaptive-v2"];
+export const ACTIVE_POLICY_IDS = ["baseline-fixed-v3", "adaptive-v3"];
 
 export const POLICY_IDS = Object.keys(POLICIES);
 

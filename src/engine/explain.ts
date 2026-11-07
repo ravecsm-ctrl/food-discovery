@@ -153,6 +153,13 @@ export function explainItem(
           out.push({ code, text: "A change from the meals you've confirmed this week." });
         }
         break;
+      case "MEAL_TIME_FIT": {
+        const mt = item.evidence.mealTime;
+        if (!mt) break;
+        const phrase = { breakfast: "breakfast", lunch: "lunch", merienda: "an afternoon merienda", dinner: "dinner", late_night: "a late-night bite" }[mt];
+        out.push({ code, text: `A good fit for ${phrase}.` });
+        break;
+      }
       case "NOVELTY_EXPLORATION":
         out.push({ code, text: "Something different from what you've logged before." });
         break;

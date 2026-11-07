@@ -61,6 +61,8 @@ export interface Dish {
   tags: string[];
   /** Other names people search by (search only). */
   aliases?: string[];
+  /** Meal-time fit overrides where local habits differ from the general rules (-1..1). */
+  mealTimes?: Partial<Record<import("./meal-time.ts").MealTime, number>>;
   /** 0 = light, 1 = very rich. Editorial estimate. */
   richness: number;
   /** 0–1 editorial estimate of local (PH) recognizability; used only for cold-start card choice. */
@@ -150,6 +152,8 @@ export interface SessionConstraints {
   softAttributeWeights: Record<string, number>;
   /** Optional "in the mood for…" focus for this session (not a dietary rule). */
   focus?: import("./mood.ts").SessionFocus;
+  /** Which meal this session is for (from the clock, or chosen by the person). */
+  mealTime?: import("./meal-time.ts").MealTime;
 }
 
 export interface PolicyContext {
@@ -165,6 +169,8 @@ export type ReasonCode =
   | "SHARED_SESSION_POSITIVE"
   | "BOTH_PARTICIPANTS_LIKED"
   | "RECENT_FOOD_VARIETY"
+  /** Extension (owner request 2026-11-07): a good fit for the meal this session is for. */
+  | "MEAL_TIME_FIT"
   | "NOVELTY_EXPLORATION"
   | "HARD_CONSTRAINT_EXCLUDED"
   | "FULFILLMENT_UNVERIFIED"

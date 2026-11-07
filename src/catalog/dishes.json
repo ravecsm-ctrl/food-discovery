@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "catalog-v0.4-draft",
+  "catalogVersion": "catalog-v0.5-draft",
   "status": "draft",
   "provenance": {
     "attributeEvidence": "inferred",
@@ -54,6 +54,7 @@
       "description": "Crispy tofu tossed with onions, chili and calamansi on a sizzling plate.",
       "tags": ["savory", "tangy", "crispy"], "richness": 0.5, "recognizability": 0.7, "illustration": "🧈",
       "aliases": ["sisig", "vegetarian sisig"],
+      "mealTimes": { "late_night": 0.6, "lunch": 0.3 },
       "attributes": { "ingredient:tofu": 1, "ingredient:rice": 0.5, "method:fried": 0.8, "flavor:savory": 0.8, "flavor:sour": 0.5, "flavor:spicy": 0.4, "texture:crispy": 0.7, "structure:sizzling_plate": 1 },
       "ingredients": [{ "key": "soy", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -62,6 +63,7 @@
       "description": "Chopped grilled pork with onions, chili and calamansi, served sizzling.",
       "tags": ["savory", "crispy", "rich"], "richness": 0.85, "recognizability": 1, "illustration": "🍳",
       "aliases": ["sisig", "sizzling sisig"],
+      "mealTimes": { "late_night": 0.75, "lunch": 0.3 },
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:grilled": 0.6, "method:fried": 0.6, "flavor:savory": 1, "flavor:sour": 0.4, "flavor:spicy": 0.4, "texture:crispy": 0.7, "texture:chewy": 0.4, "structure:sizzling_plate": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -86,6 +88,7 @@
       "description": "Stir-fried egg noodles with vegetables, meat and a squeeze of calamansi.",
       "tags": ["savory", "noodles", "light"], "richness": 0.45, "recognizability": 1, "illustration": "🍝",
       "aliases": ["canton", "pancit"],
+      "mealTimes": { "merienda": 0.75, "breakfast": -0.2 },
       "attributes": { "ingredient:wheat_noodles": 1, "ingredient:vegetables": 0.7, "ingredient:pork": 0.4, "ingredient:chicken": 0.3, "method:stir_fried": 1, "flavor:savory": 0.9, "texture:chewy": 0.6, "structure:noodles": 1 },
       "ingredients": [{ "key": "gluten", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "pork", "presence": "possible" }, { "key": "chicken", "presence": "possible" }, { "key": "shellfish", "presence": "possible" }]
     },
@@ -109,6 +112,7 @@
       "description": "Charcoal-grilled chicken marinated in calamansi, lemongrass and annatto.",
       "tags": ["smoky", "citrusy", "juicy"], "richness": 0.5, "recognizability": 1, "illustration": "🔥",
       "aliases": ["inasal", "grilled chicken"],
+      "mealTimes": { "lunch": 0.65 },
       "attributes": { "ingredient:chicken": 1, "ingredient:rice": 0.7, "method:grilled": 1, "flavor:smoky": 0.8, "flavor:savory": 0.7, "flavor:aromatic": 0.6, "texture:tender": 0.6, "structure:grilled_plate": 1 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }]
     },
@@ -125,6 +129,7 @@
       "description": "Bite-size soy-and-ginger marinated chicken, fried crisp and juicy.",
       "tags": ["crispy", "juicy", "gingery"], "richness": 0.7, "recognizability": 0.8, "illustration": "🍗",
       "aliases": ["karaage", "japanese fried chicken"],
+      "mealTimes": { "late_night": 0.5 },
       "attributes": { "ingredient:chicken": 1, "ingredient:rice": 0.5, "method:fried": 1, "flavor:savory": 0.9, "flavor:gingery": 0.5, "texture:crispy": 1, "texture:tender": 0.5, "structure:rice_meal": 0.7 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -163,6 +168,7 @@
       "id": "dish-shrimp-tempura", "familyId": "tempura", "name": "Shrimp Tempura", "cuisine": "japanese", "style": "sharing",
       "description": "Shrimp in a light, lacy batter fried crisp, with a dipping sauce.",
       "tags": ["crispy", "light", "delicate"], "richness": 0.65, "recognizability": 0.9, "illustration": "🍤",
+      "mealTimes": { "lunch": 0.45 },
       "attributes": { "ingredient:shrimp": 1, "ingredient:rice": 0.4, "method:fried": 1, "flavor:savory": 0.6, "texture:crispy": 1, "texture:soft": 0.3, "structure:fried_plate": 1 },
       "ingredients": [{ "key": "shellfish", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -255,6 +261,7 @@
       "description": "Double-fried chicken with a shattering crust, glazed sweet-spicy or soy-garlic.",
       "tags": ["crispy", "sweet-spicy", "sticky"], "richness": 0.85, "recognizability": 1, "illustration": "🍗",
       "aliases": ["kfc", "yangnyeom chicken", "fried chicken"],
+      "mealTimes": { "late_night": 0.7, "lunch": 0.1 },
       "attributes": { "ingredient:chicken": 1, "method:fried": 1, "flavor:sweet": 0.6, "flavor:spicy": 0.5, "flavor:savory": 0.8, "flavor:garlicky": 0.4, "texture:crispy": 1, "texture:saucy": 0.4, "structure:fried_plate": 1 },
       "ingredients": [{ "key": "chicken", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "sesame", "presence": "possible" }, { "key": "peanut", "presence": "possible" }]
     },
@@ -271,6 +278,7 @@
       "description": "Thick pork belly grilled at the table, wrapped in lettuce with ssamjang and garlic.",
       "tags": ["smoky", "rich", "fresh wraps"], "richness": 0.9, "recognizability": 1, "illustration": "🥬",
       "aliases": ["samgyup", "kbbq", "korean bbq", "pork belly"],
+      "mealTimes": { "lunch": -0.2 },
       "attributes": { "ingredient:pork": 1, "ingredient:vegetables": 0.5, "method:grilled": 1, "flavor:savory": 0.8, "flavor:smoky": 0.7, "flavor:garlicky": 0.4, "texture:chewy": 0.5, "texture:crispy": 0.4, "structure:grilled_plate": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }, { "key": "sesame", "presence": "possible" }]
     },
@@ -286,6 +294,7 @@
       "description": "Chewy rice cakes simmered in a sticky, sweet-hot gochujang sauce.",
       "tags": ["spicy", "chewy", "sticky"], "richness": 0.55, "recognizability": 0.8, "illustration": "🍢",
       "aliases": ["topokki", "rice cakes"],
+      "mealTimes": { "late_night": 0.6 },
       "attributes": { "ingredient:rice_cake": 1, "method:simmered": 1, "flavor:spicy": 0.9, "flavor:sweet": 0.6, "texture:chewy": 1, "texture:saucy": 0.8, "structure:street_snack": 1 },
       "ingredients": [{ "key": "fish", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "egg", "presence": "possible" }]
     },
@@ -294,6 +303,7 @@
       "description": "Delicate steamed soup dumplings filled with pork and hot broth.",
       "tags": ["juicy", "delicate", "savory"], "richness": 0.6, "recognizability": 0.7, "illustration": "🥟",
       "aliases": ["xlb", "soup dumplings"],
+      "mealTimes": { "lunch": 0.6, "merienda": 0.6 },
       "attributes": { "ingredient:pork": 1, "ingredient:bread_dough": 0.6, "method:steamed": 1, "flavor:savory": 0.9, "flavor:umami": 0.6, "texture:soft": 0.8, "texture:brothy": 0.5, "structure:dumplings": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "sesame", "presence": "possible" }]
     },
@@ -354,6 +364,7 @@
       "description": "Crackly baguette with grilled pork, pâté, pickled carrot, cilantro and chili.",
       "tags": ["crunchy", "fresh", "tangy"], "richness": 0.55, "recognizability": 0.7, "illustration": "🥖",
       "aliases": ["banh mi", "vietnamese sandwich"],
+      "mealTimes": { "lunch": 0.65 },
       "attributes": { "ingredient:pork": 1, "ingredient:bread_dough": 1, "ingredient:vegetables": 0.5, "method:grilled": 0.7, "flavor:savory": 0.8, "flavor:sour": 0.4, "flavor:herbal": 0.6, "flavor:fresh": 0.6, "texture:crunchy": 0.9, "structure:sandwich": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "fish", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -468,6 +479,7 @@
       "description": "Thin fried spring rolls filled with seasoned ground pork, with sweet chili dip.",
       "tags": ["crispy", "savory"], "richness": 0.6, "recognizability": 1, "illustration": "🥢",
       "aliases": ["lumpia", "spring rolls"],
+      "mealTimes": { "lunch": 0.35, "merienda": 0.7 },
       "attributes": { "ingredient:pork": 0.8, "ingredient:vegetables": 0.4, "ingredient:bread_dough": 0.4, "method:fried": 1, "flavor:savory": 1, "flavor:sweet": 0.3, "texture:crispy": 1, "texture:crunchy": 0.5, "structure:rolls": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -506,6 +518,7 @@
       "description": "Rice noodles under a garlicky orange shrimp sauce, topped with egg and chicharon.",
       "tags": ["savory", "garlicky"], "richness": 0.6, "recognizability": 0.9, "illustration": "🍜",
       "aliases": ["palabok"],
+      "mealTimes": { "merienda": 0.8, "dinner": 0.3 },
       "attributes": { "ingredient:rice_noodles": 1, "ingredient:shrimp": 0.6, "ingredient:egg": 0.4, "ingredient:pork": 0.3, "method:boiled": 0.6, "flavor:savory": 1, "flavor:umami": 0.7, "flavor:garlicky": 0.5, "texture:saucy": 0.8, "texture:soft": 0.6, "structure:noodles": 1 },
       "ingredients": [{ "key": "shellfish", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "pork", "presence": "possible" }, { "key": "fish", "presence": "possible" }]
     },
@@ -520,6 +533,7 @@
       "id": "dish-dinuguan", "familyId": null, "name": "Dinuguan", "cuisine": "filipino", "style": "comfort",
       "description": "Savory pork stew simmered in pork blood, vinegar and chili, often with puto.",
       "tags": ["rich", "tangy"], "richness": 0.75, "recognizability": 0.75, "illustration": "🥘",
+      "mealTimes": { "merienda": 0.2 },
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.6, "method:simmered": 1, "flavor:savory": 1, "flavor:sour": 0.5, "flavor:earthy": 0.4, "texture:saucy": 1, "texture:tender": 0.6, "structure:stew": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }]
     },
@@ -536,6 +550,7 @@
       "description": "Fresh fish cured in vinegar and calamansi with ginger, onion and chili.",
       "tags": ["tangy", "fresh", "zesty"], "richness": 0.2, "recognizability": 0.6, "illustration": "🐟",
       "aliases": ["kinilaw", "ceviche"],
+      "mealTimes": { "dinner": 0.45, "late_night": 0.3 },
       "attributes": { "ingredient:fish": 1, "method:raw": 1, "flavor:sour": 1, "flavor:fresh": 1, "flavor:gingery": 0.5, "flavor:spicy": 0.3, "texture:tender": 0.6, "texture:soft": 0.5, "structure:salad": 1 },
       "ingredients": [{ "key": "fish", "presence": "confirmed_present" }]
     },
@@ -544,6 +559,7 @@
       "description": "Battered and fried squid rings with a vinegar or mayo dip.",
       "tags": ["crispy", "chewy"], "richness": 0.65, "recognizability": 0.9, "illustration": "🦑",
       "aliases": ["calamari", "squid rings"],
+      "mealTimes": { "dinner": 0.4, "late_night": 0.7 },
       "attributes": { "ingredient:squid": 1, "method:fried": 1, "flavor:savory": 1, "texture:crispy": 1, "texture:chewy": 0.7, "structure:fried_plate": 0.6, "structure:street_snack": 0.6 },
       "ingredients": [{ "key": "shellfish", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }]
     },
@@ -559,6 +575,7 @@
       "id": "dish-sizzling-bangus-sisig", "familyId": "sisig", "name": "Sizzling Bangus Sisig", "cuisine": "filipino", "style": "street_food",
       "description": "Chopped milkfish sizzled with onion, chili and calamansi on a hot plate.",
       "tags": ["tangy", "spicy"], "richness": 0.6, "recognizability": 0.7, "illustration": "🐟",
+      "mealTimes": { "lunch": 0.5 },
       "attributes": { "ingredient:fish": 1, "ingredient:rice": 0.5, "method:grilled": 0.6, "method:stir_fried": 0.5, "flavor:savory": 1, "flavor:sour": 0.5, "flavor:spicy": 0.5, "texture:crispy": 0.5, "texture:tender": 0.5, "structure:sizzling_plate": 1 },
       "ingredients": [{ "key": "fish", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }]
     },
@@ -567,6 +584,7 @@
       "description": "Pork sisig fried until extra crunchy, with onion, chili and calamansi.",
       "tags": ["crunchy", "tangy", "spicy"], "richness": 0.85, "recognizability": 0.85, "illustration": "🥓",
       "aliases": ["sisig"],
+      "mealTimes": { "late_night": 0.75, "lunch": 0.3 },
       "attributes": { "ingredient:pork": 1, "ingredient:rice": 0.5, "method:fried": 1, "method:grilled": 0.4, "flavor:savory": 1, "flavor:sour": 0.4, "flavor:spicy": 0.4, "texture:crunchy": 1, "texture:crispy": 0.7, "structure:sizzling_plate": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "egg", "presence": "possible" }, { "key": "dairy", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -661,6 +679,7 @@
       "description": "Sweet soy and banana-ketchup pork skewers grilled over charcoal.",
       "tags": ["sweet", "smoky"], "richness": 0.6, "recognizability": 1, "illustration": "🍢",
       "aliases": ["pork bbq", "barbecue sticks"],
+      "mealTimes": { "merienda": 0.75, "dinner": 0.6, "late_night": 0.6 },
       "attributes": { "ingredient:pork": 1, "method:grilled": 1, "flavor:sweet": 0.7, "flavor:smoky": 0.7, "flavor:savory": 1, "texture:tender": 1, "texture:chewy": 0.4, "structure:skewers": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -669,6 +688,7 @@
       "description": "Thin rice noodles stir-fried with vegetables, meat and a squeeze of calamansi.",
       "tags": ["savory", "light"], "richness": 0.45, "recognizability": 0.95, "illustration": "🍜",
       "aliases": ["bihon"],
+      "mealTimes": { "merienda": 0.75 },
       "attributes": { "ingredient:rice_noodles": 1, "ingredient:vegetables": 0.6, "ingredient:chicken": 0.4, "ingredient:pork": 0.3, "method:stir_fried": 1, "flavor:savory": 1, "flavor:sour": 0.2, "texture:soft": 0.7, "texture:chewy": 0.4, "structure:noodles": 1 },
       "ingredients": [{ "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "chicken", "presence": "possible" }, { "key": "pork", "presence": "possible" }, { "key": "shellfish", "presence": "possible" }, { "key": "fish", "presence": "possible" }]
     },
@@ -677,6 +697,7 @@
       "description": "Gingery rice porridge with chicken, toasted garlic and a boiled egg.",
       "tags": ["gingery", "warming"], "richness": 0.5, "recognizability": 0.9, "illustration": "🥣",
       "aliases": ["lugaw", "rice porridge", "congee"],
+      "mealTimes": { "merienda": 0.7, "dinner": 0.1 },
       "attributes": { "ingredient:rice": 1, "ingredient:chicken": 0.7, "ingredient:egg": 0.4, "method:simmered": 1, "flavor:gingery": 0.8, "flavor:savory": 1, "flavor:garlicky": 0.5, "texture:creamy": 0.6, "texture:soft": 1, "structure:porridge": 1 },
       "ingredients": [{ "key": "chicken", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "fish", "presence": "possible" }]
     },
@@ -758,6 +779,7 @@
       "id": "dish-potato-gnocchi", "familyId": null, "name": "Potato Gnocchi", "cuisine": "italian", "style": "comfort",
       "description": "Soft potato dumplings in tomato or butter-sage sauce with parmesan.",
       "tags": ["pillowy", "cheesy"], "richness": 0.7, "recognizability": 0.55, "illustration": "🥔",
+      "mealTimes": { "merienda": -0.3, "dinner": 0.6, "lunch": 0.5 },
       "attributes": { "ingredient:potato": 1, "ingredient:cheese": 0.4, "method:boiled": 1, "flavor:savory": 1, "flavor:herbal": 0.3, "texture:soft": 1, "texture:chewy": 0.5, "structure:dumplings": 0.6, "structure:pasta": 0.6 },
       "ingredients": [{ "key": "gluten", "presence": "possible" }, { "key": "dairy", "presence": "possible" }, { "key": "egg", "presence": "possible" }]
     },
@@ -803,6 +825,7 @@
       "description": "Pizza with ham, pineapple and mozzarella — sweet and salty.",
       "tags": ["sweet", "salty"], "richness": 0.65, "recognizability": 1, "illustration": "🍍",
       "aliases": ["pizza"],
+      "mealTimes": { "merienda": 0.4 },
       "attributes": { "ingredient:bread_dough": 1, "ingredient:pork": 0.6, "ingredient:cheese": 0.7, "ingredient:fruit": 0.5, "method:baked": 1, "flavor:sweet": 0.6, "flavor:savory": 1, "texture:chewy": 0.6, "texture:soft": 0.4, "structure:pizza": 1 },
       "ingredients": [{ "key": "pork", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "dairy", "presence": "possible" }]
     },
@@ -853,6 +876,7 @@
       "description": "Steamed open-topped dumplings of ground pork and shrimp, with soy-calamansi and chili.",
       "tags": ["juicy", "savory"], "richness": 0.55, "recognizability": 1, "illustration": "🥟",
       "aliases": ["siomai", "shumai", "siu mai", "dumplings"],
+      "mealTimes": { "lunch": 0.4 },
       "attributes": { "ingredient:pork": 1, "ingredient:shrimp": 0.4, "ingredient:bread_dough": 0.4, "method:steamed": 1, "flavor:savory": 1, "flavor:umami": 0.5, "texture:tender": 0.6, "texture:chewy": 0.5, "structure:dumplings": 1 },
       "ingredients": [{ "key": "pork", "presence": "confirmed_present" }, { "key": "shellfish", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -861,6 +885,7 @@
       "description": "Translucent steamed dumplings filled with whole shrimp.",
       "tags": ["delicate", "bouncy"], "richness": 0.4, "recognizability": 0.7, "illustration": "🥟",
       "aliases": ["hakaw", "shrimp dumplings"],
+      "mealTimes": { "lunch": 0.6, "merienda": 0.6 },
       "attributes": { "ingredient:shrimp": 1, "ingredient:bread_dough": 0.3, "method:steamed": 1, "flavor:savory": 1, "flavor:fresh": 0.3, "texture:chewy": 1, "texture:tender": 0.5, "structure:dumplings": 1 },
       "ingredients": [{ "key": "shellfish", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }, { "key": "pork", "presence": "possible" }]
     },
@@ -934,6 +959,7 @@
       "description": "Silky rice porridge with century egg and shredded pork.",
       "tags": ["silky", "savory"], "richness": 0.4, "recognizability": 0.55, "illustration": "🥣",
       "aliases": ["congee", "lugaw", "jook"],
+      "mealTimes": { "merienda": 0.4 },
       "attributes": { "ingredient:rice": 1, "ingredient:egg": 0.6, "ingredient:pork": 0.4, "method:simmered": 1, "flavor:savory": 1, "flavor:umami": 0.5, "texture:creamy": 0.7, "texture:soft": 1, "structure:porridge": 1 },
       "ingredients": [{ "key": "egg", "presence": "confirmed_present" }, { "key": "pork", "presence": "possible" }]
     },
@@ -1110,6 +1136,7 @@
       "id": "dish-okonomiyaki", "familyId": null, "name": "Okonomiyaki", "cuisine": "japanese", "style": "street_food",
       "description": "Savory cabbage pancake with pork, sweet sauce, mayo and bonito flakes.",
       "tags": ["savory", "saucy"], "richness": 0.75, "recognizability": 0.6, "illustration": "🥞",
+      "mealTimes": { "breakfast": -0.3, "dinner": 0.5, "lunch": 0.5 },
       "attributes": { "ingredient:vegetables": 0.7, "ingredient:egg": 0.5, "ingredient:pork": 0.4, "ingredient:bread_dough": 0.5, "method:fried": 1, "flavor:savory": 1, "flavor:sweet": 0.4, "flavor:umami": 0.6, "texture:soft": 1, "texture:crispy": 0.4, "structure:pancake": 1 },
       "ingredients": [{ "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "fish", "presence": "possible" }, { "key": "pork", "presence": "possible" }, { "key": "shellfish", "presence": "possible" }, { "key": "soy", "presence": "possible" }]
     },
@@ -1179,6 +1206,7 @@
       "description": "Seaweed rice rolls filled with egg, pickled radish, vegetables and meat.",
       "tags": ["fresh", "mild"], "richness": 0.4, "recognizability": 0.75, "illustration": "🍙",
       "aliases": ["gimbap"],
+      "mealTimes": { "lunch": 0.7 },
       "attributes": { "ingredient:rice": 1, "ingredient:egg": 0.5, "ingredient:vegetables": 0.6, "method:raw": 0.4, "flavor:savory": 0.7, "flavor:fresh": 0.6, "flavor:nutty": 0.3, "texture:soft": 1, "texture:chewy": 0.4, "structure:rolls": 1 },
       "ingredients": [{ "key": "egg", "presence": "possible" }, { "key": "sesame", "presence": "possible" }, { "key": "beef", "presence": "possible" }, { "key": "pork", "presence": "possible" }, { "key": "fish", "presence": "possible" }, { "key": "soy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -1304,6 +1332,7 @@
       "id": "dish-caesar-salad", "familyId": null, "name": "Caesar Salad", "cuisine": "western", "style": "light_fresh",
       "description": "Romaine lettuce with croutons, parmesan and a garlicky creamy dressing.",
       "tags": ["fresh", "crunchy"], "richness": 0.5, "recognizability": 0.9, "illustration": "🥗",
+      "mealTimes": { "lunch": 0.6 },
       "attributes": { "ingredient:vegetables": 1, "ingredient:cheese": 0.4, "ingredient:bread_dough": 0.3, "method:raw": 1, "flavor:fresh": 1, "flavor:savory": 0.6, "flavor:garlicky": 0.4, "texture:crunchy": 1, "texture:creamy": 0.4, "structure:salad": 1 },
       "ingredients": [{ "key": "dairy", "presence": "possible" }, { "key": "gluten", "presence": "possible" }, { "key": "egg", "presence": "possible" }, { "key": "fish", "presence": "possible" }]
     },
@@ -1444,6 +1473,7 @@
       "description": "Buttery toasted bread with melted cheese, often paired with tomato soup.",
       "tags": ["cheesy", "buttery"], "richness": 0.75, "recognizability": 0.8, "illustration": "🧀",
       "aliases": ["grilled cheese", "sandwich"],
+      "mealTimes": { "merienda": 0.6 },
       "attributes": { "ingredient:bread_dough": 1, "ingredient:cheese": 1, "method:grilled": 1, "flavor:savory": 1, "texture:crispy": 0.6, "texture:creamy": 0.5, "structure:sandwich": 1 },
       "ingredients": [{ "key": "dairy", "presence": "confirmed_present" }, { "key": "gluten", "presence": "possible" }]
     },
@@ -1654,6 +1684,7 @@
       "id": "dish-nachos", "familyId": null, "name": "Nachos", "cuisine": "mexican", "style": "sharing",
       "description": "Tortilla chips loaded with melted cheese, beef, salsa, jalapeños and sour cream.",
       "tags": ["cheesy", "crunchy"], "richness": 0.85, "recognizability": 0.9, "illustration": "🧀",
+      "mealTimes": { "late_night": 0.6, "merienda": 0.5 },
       "attributes": { "ingredient:cheese": 1, "ingredient:beef": 0.5, "ingredient:tomato": 0.4, "method:baked": 1, "flavor:savory": 1, "flavor:spicy": 0.4, "texture:crunchy": 1, "texture:creamy": 0.6, "structure:street_snack": 0.6, "structure:platter": 1 },
       "ingredients": [{ "key": "dairy", "presence": "confirmed_present" }, { "key": "beef", "presence": "possible" }, { "key": "gluten", "presence": "possible" }]
     },

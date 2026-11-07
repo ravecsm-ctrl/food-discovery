@@ -4,6 +4,7 @@
  */
 import { buildCandidates } from "./eligibility.ts";
 import { depsForSession } from "./together.ts";
+import { mealFit } from "./meal-time.ts";
 import { dishFatigue, recentLoad } from "./fatigue.ts";
 import type { PolicyConfig } from "./policy.ts";
 import { tieBreak } from "./rng.ts";
@@ -37,6 +38,7 @@ export function scoringInputs(session: DiscoverySession, deps: EngineDeps): Scor
     softAttributeWeights: session.constraints.softAttributeWeights,
     reactions: activeReactions(session),
     now: deps.now,
+    ...(session.constraints.mealTime ? { mealTime: session.constraints.mealTime } : {}),
   };
 }
 
@@ -106,11 +108,18 @@ export function selectNextCard(session: DiscoverySession, deps: EngineDeps): Car
   const eatenRecently = fatigueOn
     ? new Set(recentConfirmedMeals(deps.user.confirmedMeals, deps.now, deps.policy.fatigue.windowDays).map((m) => m.dishId))
     : new Set<string | null>();
-  const fresh = unseen.filter((d) => !eatenRecently.has(d.id));
+  // Meal-time fit (v3+): clearly unsuitable dishes (e.g. a sharing platter at breakfast) wait at the back
+  // of the queue in BOTH card policies — never excluded, so they still appear if everything else is seen.
+  const mt = session.constraints.mealTime;
+  const mtCfg = deps.policy.mealTime;
+  const fitFor = (d: Dish) => (mtCfg.enabled && mt ? mealFit(d, mt) : 0);
+  const okForTime = (d: Dish) => !mtCfg.enabled || !mt || fitFor(d) >= mtCfg.demoteBelow;
+  const fresh = unseen.filter((d) => !eatenRecently.has(d.id) && okForTime(d));
 
   if (deps.policy.cardSelection === "fixed") {
     const order = baselineSequence(eligible, deps, session.seed);
-    const next = (order.find((id) => !shown.has(id) && !eatenRecently.has(id)) ?? order.find((id) => !shown.has(id))) as string;
+    const ok = new Set(fresh.map((d) => d.id));
+    const next = (order.find((id) => ok.has(id)) ?? order.find((id) => !shown.has(id) && !eatenRecently.has(id)) ?? order.find((id) => !shown.has(id))) as string;
     return { dishId: next, reason: "fixed_sequence", q: null };
   }
 
@@ -123,6 +132,11 @@ export function selectNextCard(session: DiscoverySession, deps: EngineDeps): Car
       const load = recentLoad(deps.catalog, deps.user.confirmedMeals, deps.now, deps.policy.fatigue);
       const notTired = base.filter((d) => dishFatigue(d, load, deps.policy.fatigue) <= 0.5);
       if (notTired.length > 0) base = notTired;
+    }
+    // First impressions fit the meal: when enough good fits exist, cold-start cards come from them.
+    if (mtCfg.enabled && mt) {
+      const fitting = base.filter((d) => fitFor(d) >= 0.4);
+      if (fitting.length >= cfg.coldStartCards * 2) base = fitting;
     }
     const recognizable = base.filter((d) => d.recognizability >= cfg.coldStartMinRecognizability);
     const pool = recognizable.length > 0 ? recognizable : base;

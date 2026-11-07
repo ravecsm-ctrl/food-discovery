@@ -33,6 +33,8 @@ export const DishSchema = z
     tags: z.array(z.string().min(2).max(20)).min(1).max(4),
     /** Other names people search by (local names, spellings, shorthand). Search only — never shown as facts. */
     aliases: z.array(z.string().min(2).max(40)).max(8).optional(),
+    /** Meal-time fit overrides (-1..1) where local habits differ from the general rules. */
+    mealTimes: z.partialRecord(z.enum(["breakfast", "lunch", "merienda", "dinner", "late_night"]), z.number().min(-1).max(1)).optional(),
     richness: unit,
     recognizability: unit,
     illustration: z.string().min(1).max(8),
