@@ -22,6 +22,11 @@ import {
   mealTimeAt,
   ownDishSummary,
   tasteProfile,
+  favouriteDishIds,
+  hiddenDishIds,
+  snoozeUntil,
+  STRONG_PREFS_V0,
+  type StrongPreference,
   CRAVINGS,
   type CravingKey,
   type MealTime,
@@ -56,6 +61,9 @@ import {
   getRestrictions,
   listEvalSessions,
   listMeals,
+  listStrongPrefs,
+  getStrongPref,
+  setStrongPref,
   setProfile,
   setRestrictions,
   updateMeal,
@@ -92,12 +100,20 @@ const prefersReducedMotion = () => typeof window !== "undefined" && window.match
 function depsFor(policyId: string): EngineDeps {
   const now = nowIso();
   const meals = listMeals();
-  // Long-term taste comes only from meals you ate and rated (taste-v0); swipes never feed it.
-  const taste = tasteProfile(catalog, ratedMeals(meals, listEvalSessions()), now);
+  const prefs = listStrongPrefs();
+  // Long-term taste comes only from meals you ate and rated, plus dishes you chose to love or hide
+  // (taste-v1). Ordinary swipes never feed it.
+  const taste = tasteProfile(catalog, ratedMeals(meals, listEvalSessions()), now, prefs);
   return {
     catalog,
     policy: getPolicy(policyId),
-    user: { stableAttributeWeights: taste.weights, confirmedMeals: meals, noveltyPreference: 0.5, varietySeeking: getProfile().varietySeeking },
+    user: {
+      stableAttributeWeights: taste.weights,
+      confirmedMeals: meals,
+      noveltyPreference: 0.5,
+      varietySeeking: getProfile().varietySeeking,
+      favouriteDishIds: favouriteDishIds(prefs, now),
+    },
     now,
   };
 }
@@ -156,6 +172,10 @@ export function DiscoveryApp() {
   const [moodOpen, setMoodOpen] = useState(false);
   const [disagreeOpen, setDisagreeOpen] = useState(false);
   const [jointConfirm, setJointConfirm] = useState<{ dishId: string; rank: number } | null>(null);
+  /** Note shown after "Love it" / "Not for a while" (with "Never show again" for the latter). */
+  const [superNote, setSuperNote] = useState<{ dishId: string; kind: "favourite" | "snooze" | "never" } | null>(null);
+  /** What each strong reaction replaced, so Undo puts the dish's previous preference back. */
+  const prefUndo = useRef<Map<string, { dishId: string; prev: StrongPreference | null }>>(new Map());
   const runTriggers = useRef<RecommendationRunRecord["trigger"][]>([]);
   const mainRef = useRef<HTMLElement>(null);
 
@@ -262,11 +282,15 @@ export function DiscoveryApp() {
         softAttributeWeights: policy.mealTime.enabled ? {} : contextWeights(new Date()),
         focus,
         mealTime,
+        // Dishes you chose not to see for now. Solo only: Together Mode uses no stored personal history.
+        hiddenDishIds: hiddenDishIds(listStrongPrefs(), nowIso()),
       },
       now: nowIso(),
       initialBudget: policy.session.initialBudget,
     });
     runTriggers.current = [];
+    prefUndo.current = new Map();
+    setSuperNote(null);
     setAssignment(asg);
     setExhaustedNotice(false);
     setLeaving(null);
@@ -334,17 +358,43 @@ export function DiscoveryApp() {
   );
 
   const react = useCallback(
-    (value: ReactionValue) => {
+    (value: ReactionValue, strong = false) => {
       const pendingCard = session ? currentExposure(session) : null;
       if (!session || !pendingCard || leaving) return;
-      const dishName = catalog.byId.get(pendingCard.dishId)?.name ?? "";
+      // "Love it" / "Not for a while" are personal and remembered: solo sessions only.
+      const isStrong = strong && session.mode !== "together";
+      const dishId = pendingCard.dishId;
+      const dishName = catalog.byId.get(dishId)?.name ?? "";
       setLeaving(value);
       const commit = () => {
         setLeaving(null);
-        const s2 = recordReaction(session, value, nowIso());
+        const now = nowIso();
+        const s2 = recordReaction(session, value, now, isStrong ? "explicit" : "ordinary");
+        if (isStrong) {
+          const group = s2.reactions.at(-1)?.actionGroupId;
+          if (group) prefUndo.current.set(group, { dishId, prev: getStrongPref(dishId) });
+          setStrongPref(dishId, value === "yes" ? { dishId, kind: "favourite", at: now } : { dishId, kind: "snooze", at: now, until: snoozeUntil(now) });
+          setSuperNote({ dishId, kind: value === "yes" ? "favourite" : "snooze" });
+        } else {
+          setSuperNote(null);
+        }
         advance(s2, traces, runs, assignment);
         setDisagreeOpen(false);
-        setAnnounce(`${dishName}: ${value === "yes" ? (session.mode === "together" ? "You both like it" : "Sounds good") : session.mode === "together" ? "Not for you two" : "Not tonight"}.`);
+        setAnnounce(
+          `${dishName}: ${
+            isStrong
+              ? value === "yes"
+                ? "Love it — saved to your favourites"
+                : `Not for a while — hidden for ${STRONG_PREFS_V0.snoozeDays} days`
+              : value === "yes"
+                ? session.mode === "together"
+                  ? "You both like it"
+                  : "Sounds good"
+                : session.mode === "together"
+                  ? "Not for you two"
+                  : "Not tonight"
+          }.`,
+        );
       };
       if (prefersReducedMotion()) commit();
       else window.setTimeout(commit, 200);
@@ -354,6 +404,13 @@ export function DiscoveryApp() {
 
   const undo = useCallback(() => {
     if (!session || !canUndo(session) || leaving) return;
+    const last = [...session.reactions].reverse().find((r) => r.active);
+    const saved = last ? prefUndo.current.get(last.actionGroupId) : undefined;
+    if (last && saved) {
+      setStrongPref(saved.dishId, saved.prev); // put back what "Love it" / "Not for a while" replaced
+      prefUndo.current.delete(last.actionGroupId);
+    }
+    setSuperNote(null);
     const s2 = undoLastReaction(session, nowIso());
     const back = currentExposure(s2);
     setSession(s2);
@@ -472,6 +529,12 @@ export function DiscoveryApp() {
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         react("no");
+      } else if (e.key === "ArrowUp" && session?.mode !== "together") {
+        e.preventDefault();
+        react("yes", true);
+      } else if (e.key === "ArrowDown" && session?.mode !== "together") {
+        e.preventDefault();
+        react("no", true);
       } else if (e.key === "u" || e.key === "U" || e.key === "Backspace") {
         e.preventDefault();
         undo();
@@ -479,7 +542,7 @@ export function DiscoveryApp() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [detailsFor, phase, react, undo]);
+  }, [detailsFor, phase, react, session?.mode, undo]);
 
   const detailsDish = detailsFor ? catalog.byId.get(detailsFor) : null;
 
@@ -632,12 +695,63 @@ export function DiscoveryApp() {
                 </button>
               </div>
             )}
+            {session.mode !== "together" && (
+              <div className="mt-2 grid grid-cols-[3.5rem_1fr_1fr] gap-2.5">
+                <span aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => react("no", true)}
+                  disabled={!currentDish}
+                  className="h-11 min-w-0 whitespace-nowrap rounded-full px-2 text-[14px] font-medium text-no ring-1 ring-no/40"
+                  title={`Hide this dish for ${STRONG_PREFS_V0.snoozeDays} days (↓)`}
+                >
+                  ⏸ Not for a while
+                </button>
+                <button
+                  type="button"
+                  onClick={() => react("yes", true)}
+                  disabled={!currentDish}
+                  className="h-11 min-w-0 whitespace-nowrap rounded-full px-2 text-[14px] font-semibold text-yes ring-1 ring-yes/50"
+                  title="Save as a favourite (↑)"
+                >
+                  ★ Love it
+                </button>
+              </div>
+            )}
+            {superNote && session.mode !== "together" && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-2.5 text-sm ring-1 ring-line" role="status" data-testid="super-note">
+                <p className="min-w-0">
+                  <span className="font-semibold">{catalog.byId.get(superNote.dishId)?.name}</span>{" "}
+                  {superNote.kind === "favourite"
+                    ? "saved to your favourites."
+                    : superNote.kind === "snooze"
+                      ? `hidden for ${STRONG_PREFS_V0.snoozeDays} days.`
+                      : "won't be shown again. You can change this in Your data."}
+                </p>
+                {superNote.kind === "snooze" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = nowIso();
+                      setStrongPref(superNote.dishId, { dishId: superNote.dishId, kind: "never", at: now });
+                      setSuperNote({ ...superNote, kind: "never" });
+                      setAnnounce(`${catalog.byId.get(superNote.dishId)?.name ?? ""} won't be shown again.`);
+                    }}
+                    className="shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold"
+                  >
+                    Never show again
+                  </button>
+                )}
+              </div>
+            )}
             {session.mode === "together" && pair && !disagreeOpen && (
               <button type="button" onClick={() => setDisagreeOpen(true)} disabled={!currentDish} className="mt-2 h-11 w-full rounded-full text-[15px] font-medium text-muted ring-1 ring-line">
                 We disagree on this one
               </button>
             )}
-            <p className="mt-3 hidden text-center text-xs text-muted sm:block">Keyboard: ← Not tonight · → Sounds good · U Undo</p>
+            <p className="mt-3 hidden text-center text-xs text-muted sm:block">
+              Keyboard: ← Not tonight · → Sounds good{session.mode !== "together" ? " · ↑ Love it · ↓ Not for a while" : ""} · U Undo
+            </p>
           </section>
         )}
 

@@ -9,13 +9,15 @@
  *   on both, differ → whichever side still matches base is stale; if both changed, this device wins.
  * Sessions are append-only and never deleted by sync. Dietary restrictions are never involved.
  */
-import { cleanOwnDish, type ConfirmedMeal } from "@/engine";
+import { cleanOwnDish, type ConfirmedMeal, type StrongPreference } from "@/engine";
 import type { EvalSessionRecord } from "./local-store";
 
 export interface SyncLedger {
   userId: string;
   meals: Record<string, string>;
   sessions: Record<string, string>;
+  /** dishId → strong-preference hash (absent in ledgers written before strong preferences existed). */
+  prefs?: Record<string, string>;
   varietySeeking?: number;
   lastSyncedAt?: string;
 }
@@ -29,12 +31,14 @@ export interface CloudState {
   profile: { varietySeeking: number } | null;
   meals: Array<ConfirmedMeal & { sourceSessionId?: string | null }>;
   sessions: CloudSession[];
+  strongPreferences?: StrongPreference[];
 }
 
 export interface LocalState {
   meals: ConfirmedMeal[];
   sessions: EvalSessionRecord[];
   varietySeeking: number;
+  strongPrefs?: StrongPreference[];
 }
 
 export interface SyncPlan {
@@ -46,6 +50,10 @@ export interface SyncPlan {
   pullSessions: EvalSessionRecord[];
   pushVariety: number | null;
   pullVariety: number | null;
+  pushPrefs: StrongPreference[];
+  deleteCloudPrefs: string[];
+  pullPrefs: StrongPreference[];
+  removeLocalPrefs: string[];
   skipped: { sessions: number; meals: number };
 }
 
@@ -84,6 +92,11 @@ export function sessionHash(s: EvalSessionRecord): string {
   );
 }
 
+/** Content fingerprint of a strong preference. */
+export function prefHash(p: StrongPreference): string {
+  return fnv([p.kind, ms(p.at), p.kind === "snooze" && p.until ? ms(p.until) : ""].join("|"));
+}
+
 /** Which local records can live in the cloud at all. */
 export function syncableMeal(m: ConfirmedMeal): boolean {
   return isUuid(m.id) && m.source !== "synthetic" && (m.dishId !== null || !!m.unrecognizedName?.trim());
@@ -102,6 +115,10 @@ export function planSync(local: LocalState, cloud: CloudState, base: SyncLedger 
     pullSessions: [],
     pushVariety: null,
     pullVariety: null,
+    pushPrefs: [],
+    deleteCloudPrefs: [],
+    pullPrefs: [],
+    removeLocalPrefs: [],
     skipped: { sessions: 0, meals: 0 },
   };
   const baseMeals = base?.meals ?? {};
@@ -154,6 +171,29 @@ export function planSync(local: LocalState, cloud: CloudState, base: SyncLedger 
     }
   }
 
+  /* strong preferences (one per dish; same three-way rules as meals) */
+  const basePrefs = base?.prefs ?? {};
+  const localPrefs = new Map((local.strongPrefs ?? []).map((p) => [p.dishId, p]));
+  const cloudPrefs = new Map((cloud.strongPreferences ?? []).map((p) => [p.dishId, cleanPref(p)]));
+  for (const id of new Set([...localPrefs.keys(), ...cloudPrefs.keys()])) {
+    const l = localPrefs.get(id);
+    const c = cloudPrefs.get(id);
+    const b = basePrefs[id];
+    if (l && !c) {
+      if (b) plan.removeLocalPrefs.push(id);
+      else plan.pushPrefs.push(l);
+    } else if (!l && c) {
+      if (b) plan.deleteCloudPrefs.push(id);
+      else plan.pullPrefs.push(c);
+    } else if (l && c) {
+      const lh = prefHash(l);
+      const ch = prefHash(c);
+      if (lh === ch) continue;
+      if (lh === b) plan.pullPrefs.push(c);
+      else plan.pushPrefs.push(l);
+    }
+  }
+
   /* preferences */
   const cv = cloud.profile?.varietySeeking;
   const lv = local.varietySeeking;
@@ -180,6 +220,10 @@ function stripCloudMeal(m: ConfirmedMeal & { sourceSessionId?: string | null }):
   };
 }
 
+function cleanPref(p: StrongPreference): StrongPreference {
+  return { dishId: p.dishId, kind: p.kind, at: p.at, ...(p.kind === "snooze" ? { until: p.until ?? null } : {}) };
+}
+
 function stripCloudSession(s: CloudSession): EvalSessionRecord {
   const rest: Partial<CloudSession> = { ...s };
   delete rest.version;
@@ -192,6 +236,7 @@ export function ledgerAfter(userId: string, local: LocalState, at: string): Sync
     userId,
     meals: Object.fromEntries(local.meals.filter(syncableMeal).map((m) => [m.id, mealHash(m)])),
     sessions: Object.fromEntries(local.sessions.filter(syncableSession).map((s) => [s.sessionId, sessionHash(s)])),
+    prefs: Object.fromEntries((local.strongPrefs ?? []).map((p) => [p.dishId, prefHash(p)])),
     varietySeeking: local.varietySeeking,
     lastSyncedAt: at,
   };

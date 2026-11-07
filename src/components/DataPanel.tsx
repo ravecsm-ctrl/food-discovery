@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { loadCatalog } from "@/catalog";
-import type { ConfirmedMeal } from "@/engine";
+import { activePrefs, type ConfirmedMeal, type StrongPreference } from "@/engine";
 import { encodeBackup, parseBackup } from "@/lib/backup-format";
 import {
   cloudStatus,
@@ -18,7 +18,22 @@ import {
 } from "@/lib/cloud-backup";
 import { RESTRICTION_LABELS } from "./DishInfo";
 import type { RestrictionKey } from "@/engine";
-import { clearAllLocalData, getProfile, getRestrictions, listEvalSessions, listMeals, onDataChange, removeMeal, replaceAll, setProfile, setRestrictions, snapshot, updateMeal } from "@/lib/local-store";
+import {
+  clearAllLocalData,
+  getProfile,
+  getRestrictions,
+  listEvalSessions,
+  listMeals,
+  listStrongPrefs,
+  onDataChange,
+  removeMeal,
+  replaceAll,
+  setProfile,
+  setRestrictions,
+  setStrongPref,
+  snapshot,
+  updateMeal,
+} from "@/lib/local-store";
 import { detachBeforeLocalWipe } from "@/lib/cloud-sync";
 import { CloudAccount } from "./CloudAccount";
 import { MealEditor } from "./MealEditor";
@@ -47,6 +62,7 @@ export function DataPanel() {
   const [meals, setMeals] = useState<ConfirmedMeal[]>([]);
   const [variety, setVariety] = useState(1);
   const [restrictions, setRestrictionState] = useState<RestrictionKey[]>([]);
+  const [prefs, setPrefs] = useState<StrongPreference[]>([]);
   const [token, setToken] = useState("");
   const [repo, setRepo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,6 +76,7 @@ export function DataPanel() {
     setMeals(listMeals().sort((a, b) => b.consumedAt.localeCompare(a.consumedAt)));
     setVariety(getProfile().varietySeeking);
     setRestrictionState(getRestrictions());
+    setPrefs(listStrongPrefs());
   };
   useEffect(() => {
     startCloudBackup();
@@ -87,7 +104,20 @@ export function DataPanel() {
   const unlisted = unlistedFoods(catalog, meals);
   const rated = ratedMeals(meals, listEvalSessions());
   const ratingOf = new Map(rated.map((r) => [r.meal.id, r.rating]));
-  const taste = tasteProfile(catalog, rated, new Date().toISOString());
+  const nowIso = new Date().toISOString();
+  const taste = tasteProfile(catalog, rated, nowIso, prefs);
+  const shownPrefs = activePrefs(prefs, nowIso).filter((p) => catalog.byId.has(p.dishId));
+  const favourites = shownPrefs.filter((p) => p.kind === "favourite");
+  const hiddenPrefs = shownPrefs.filter((p) => p.kind !== "favourite");
+  const changePref = (dishId: string, pref: StrongPreference | null) => {
+    setStrongPref(dishId, pref);
+    refresh();
+  };
+  const evidenceParts = [
+    taste.ratedMeals > 0 ? `${taste.ratedMeals} rated meal${taste.ratedMeals === 1 ? "" : "s"}` : null,
+    taste.favourites > 0 ? `${taste.favourites} favourite${taste.favourites === 1 ? "" : "s"}` : null,
+    taste.hidden > 0 ? `${taste.hidden} hidden dish${taste.hidden === 1 ? "" : "es"}` : null,
+  ].filter(Boolean);
   const highlights = tasteHighlights(taste);
   const word = (a: string) => (a.startsWith("cuisine:") ? cuisineName(a.slice(8)) : attributeWord(a));
   const nameOf = (m: ConfirmedMeal) => (m.dishId ? catalog.byId.get(m.dishId)?.name : m.unrecognizedName) ?? "Meal";
@@ -163,9 +193,10 @@ export function DataPanel() {
         <h2 id="taste-profile" className="text-lg font-semibold">
           Your taste so far
         </h2>
-        {taste.ratedMeals < 2 ? (
+        {taste.ratedMeals + taste.favourites + taste.hidden < 2 ? (
           <p className="mt-1 text-sm text-muted">
-            Rate a few meals you&apos;ve eaten (stars below) and suggestions will start to reflect what you enjoy. Swipes never count — only meals you rate.
+            Rate a few meals you&apos;ve eaten (stars below), or tap ★ Love it on a card, and suggestions will start to reflect what you enjoy. Ordinary swipes
+            never count.
           </p>
         ) : (
           <div className="mt-1 text-sm">
@@ -183,9 +214,61 @@ export function DataPanel() {
             )}
             {highlights.likes.length + highlights.dislikes.length === 0 && <p className="text-muted">No clear pattern yet.</p>}
             <p className="mt-1 text-xs text-muted">
-              From {taste.ratedMeals} rated meals. Older ratings count less, tonight&apos;s swipes always matter more, and changing a rating updates this right away.
+              From {evidenceParts.join(", ")}. Older ones count less, tonight&apos;s swipes always matter more, and changing a rating updates this right away.
             </p>
           </div>
+        )}
+      </section>
+
+      <section className="mt-8" aria-labelledby="strong-prefs" data-testid="strong-prefs">
+        <h2 id="strong-prefs" className="text-lg font-semibold">
+          Favourites and hidden dishes
+        </h2>
+        {shownPrefs.length === 0 && (
+          <p className="mt-1 text-sm text-muted">None yet. Tap ★ Love it or ⏸ Not for a while on a card. These are taste choices, not dietary rules.</p>
+        )}
+        {favourites.length > 0 && (
+          <ul className="mt-2 space-y-1.5" aria-label="Favourites">
+            {favourites.map((p) => (
+              <li key={p.dishId} className="flex items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 text-sm ring-1 ring-line">
+                <span className="min-w-0">
+                  <span className="font-medium">★ {catalog.byId.get(p.dishId)?.name}</span>
+                  <span className="block text-xs text-muted">Favourite</span>
+                </span>
+                <button type="button" className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-line" onClick={() => changePref(p.dishId, null)}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {hiddenPrefs.length > 0 && (
+          <ul className="mt-2 space-y-1.5" aria-label="Hidden dishes">
+            {hiddenPrefs.map((p) => (
+              <li key={p.dishId} className="flex items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2 text-sm ring-1 ring-line">
+                <span className="min-w-0">
+                  <span className="font-medium">{catalog.byId.get(p.dishId)?.name}</span>
+                  <span className="block text-xs text-muted">
+                    {p.kind === "never" ? "Never shown" : `Hidden until ${p.until ? new Date(p.until).toLocaleDateString() : "later"}`}
+                  </span>
+                </span>
+                <span className="flex shrink-0 gap-1.5">
+                  {p.kind === "snooze" && (
+                    <button
+                      type="button"
+                      className="rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-line"
+                      onClick={() => changePref(p.dishId, { dishId: p.dishId, kind: "never", at: new Date().toISOString() })}
+                    >
+                      Never show
+                    </button>
+                  )}
+                  <button type="button" className="rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-line" onClick={() => changePref(p.dishId, null)}>
+                    Show again
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

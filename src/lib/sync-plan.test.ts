@@ -1,6 +1,6 @@
 /** Three-way phone ⇄ cloud reconciliation (ENG-023, ENG-025, R-015, R-029). */
 import { describe, expect, it } from "vitest";
-import type { ConfirmedMeal } from "@/engine";
+import type { ConfirmedMeal, StrongPreference } from "@/engine";
 import type { EvalSessionRecord } from "./local-store";
 import { ledgerAfter, mealHash, planSync, sessionHash, type CloudState, type LocalState } from "./sync-plan";
 
@@ -151,5 +151,35 @@ describe("meal ratings (library step 3)", () => {
     const ratedHere = { ...meal(5), rating: 4 };
     expect(planSync(local([ratedHere], []), cloud([meal(5)], []), base).pushMeals).toEqual([ratedHere]);
     expect(planSync(local([meal(5)], []), cloud([{ ...meal(5), rating: 2 }], []), base).pullMeals[0]?.rating).toBe(2);
+  });
+});
+
+describe("strong preferences (Love it / Not for a while / Never)", () => {
+  const T = "2026-11-07T12:00:00.000Z";
+  const fav: StrongPreference = { dishId: "dish-bulalo", kind: "favourite", at: T };
+  const snz: StrongPreference = { dishId: "dish-dinuguan", kind: "snooze", at: T, until: "2026-12-07T12:00:00.000Z" };
+  const withPrefs = (prefs: StrongPreference[]): LocalState => ({ ...local(), strongPrefs: prefs });
+  const cloudPrefs = (prefs: StrongPreference[]): CloudState => ({ ...cloud(), strongPreferences: prefs });
+
+  it("first sync pushes phone-only and pulls cloud-only preferences", () => {
+    const p = planSync(withPrefs([fav]), cloudPrefs([snz]), null);
+    expect(p.pushPrefs).toEqual([fav]);
+    expect(p.pullPrefs).toEqual([snz]);
+    expect(p.deleteCloudPrefs).toEqual([]);
+  });
+
+  it("removing one here deletes it in the cloud; removed elsewhere is removed here", () => {
+    const base = ledgerAfter(U, withPrefs([fav, snz]), "t");
+    const p = planSync(withPrefs([snz]), cloudPrefs([fav]), base);
+    expect(p.deleteCloudPrefs).toEqual(["dish-bulalo"]);
+    expect(p.removeLocalPrefs).toEqual(["dish-dinuguan"]);
+  });
+
+  it("a change here (snooze → never) is pushed; the same instant in another format is not a change", () => {
+    const base = ledgerAfter(U, withPrefs([snz]), "t");
+    const nev: StrongPreference = { dishId: "dish-dinuguan", kind: "never", at: "2026-11-07T12:05:00.000Z" };
+    expect(planSync(withPrefs([nev]), cloudPrefs([snz]), base).pushPrefs).toEqual([nev]);
+    const same = planSync(withPrefs([snz]), cloudPrefs([{ ...snz, at: "2026-11-07T20:00:00+08:00" }]), base);
+    expect(same).toMatchObject({ pushPrefs: [], pullPrefs: [], deleteCloudPrefs: [], removeLocalPrefs: [] });
   });
 });

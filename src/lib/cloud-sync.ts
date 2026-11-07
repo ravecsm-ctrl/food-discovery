@@ -10,7 +10,7 @@
  * - Dietary restrictions are never sent. The publishable key is public by design; there are no secrets here.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { applyCloudChanges, getProfile, listEvalSessions, listMeals, onDataChange } from "./local-store";
+import { applyCloudChanges, getProfile, listEvalSessions, listMeals, listStrongPrefs, onDataChange } from "./local-store";
 import { ledgerAfter, planSync, type CloudState, type LocalState, type SyncLedger } from "./sync-plan";
 
 export const PRIVACY_POLICY_VERSION = "privacy-v1";
@@ -158,7 +158,7 @@ function schedule(ms = WAIT_MS) {
 }
 
 function localState(): LocalState {
-  return { meals: listMeals(), sessions: listEvalSessions(), varietySeeking: getProfile().varietySeeking };
+  return { meals: listMeals(), sessions: listEvalSessions(), varietySeeking: getProfile().varietySeeking, strongPrefs: listStrongPrefs() };
 }
 
 /** Reconcile phone ⇄ cloud once. Safe to call any time; concurrent calls coalesce. */
@@ -187,13 +187,22 @@ export async function syncNow(): Promise<void> {
         for (const m of plan.pushMeals) await rpc("save_meal", { p_request_id: rid(), p_meal: m });
         for (const id of plan.deleteCloudMeals) await rpc("delete_meal", { p_request_id: rid(), p_meal_id: id });
         if (plan.pushVariety !== null) await rpc("save_preferences", { p_variety_seeking: plan.pushVariety });
+        for (const p of plan.pushPrefs) await rpc("save_strong_preference", { p_request_id: rid(), p_pref: p });
+        for (const id of plan.deleteCloudPrefs) await rpc("delete_strong_preference", { p_request_id: rid(), p_dish_id: id });
         // Meals first, so satisfaction events in sessions can attach to them.
         for (const s of plan.pushSessions) await rpc("sync_session", { p_request_id: rid(), p_expected_version: s.expectedVersion, p_session: s.record });
       } catch (e) {
         if (round === 0 && /SESSION_VERSION_CONFLICT/.test(String(e))) continue; // re-read and retry once
         throw e;
       }
-      applyCloudChanges({ upsertMeals: plan.pullMeals, removeMeals: plan.removeLocalMeals, upsertSessions: plan.pullSessions, varietySeeking: plan.pullVariety });
+      applyCloudChanges({
+        upsertMeals: plan.pullMeals,
+        removeMeals: plan.removeLocalMeals,
+        upsertSessions: plan.pullSessions,
+        varietySeeking: plan.pullVariety,
+        upsertPrefs: plan.pullPrefs,
+        removePrefs: plan.removeLocalPrefs,
+      });
       persisted.ledger = ledgerAfter(identity.userId, localState(), new Date().toISOString());
       save();
       break;

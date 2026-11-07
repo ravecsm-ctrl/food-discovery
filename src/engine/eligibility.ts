@@ -19,6 +19,8 @@ export interface EligibilityResult {
   budgetVerified: false;
   /** Outside tonight's "in the mood for…" focus (not a dietary exclusion). */
   outOfFocus: boolean;
+  /** The person chose not to see this dish for now (strong preference; not a dietary exclusion). */
+  hiddenByYou: boolean;
 }
 
 export const DEFAULT_CONSTRAINTS: SessionConstraints = {
@@ -51,14 +53,16 @@ export function evaluateEligibility(dish: Dish, constraints: SessionConstraints)
     constraints.acquisition === "delivery" || constraints.acquisition === "dine_out" ? "search_only" : "unverified";
 
   const outOfFocus = !inFocus(dish, constraints.focus);
+  const hiddenByYou = constraints.hiddenDishIds?.includes(dish.id) ?? false;
   return {
     dishId: dish.id,
-    eligible: excludedBy.length === 0 && !outOfFocus,
+    eligible: excludedBy.length === 0 && !outOfFocus && !hiddenByYou,
     excludedBy,
     safety,
     fulfillment,
     budgetVerified: false,
     outOfFocus,
+    hiddenByYou,
   };
 }
 
@@ -68,6 +72,8 @@ export interface CandidateSet {
   excluded: EligibilityResult[];
   /** Dishes outside tonight's mood focus (not counted as dietary exclusions). */
   outOfFocus: number;
+  /** Dishes the person hid for now (not counted as dietary exclusions). */
+  hiddenByYou: number;
   byId: Map<string, EligibilityResult>;
 }
 
@@ -77,12 +83,14 @@ export function buildCandidates(catalog: Catalog, constraints: SessionConstraint
   const excluded: EligibilityResult[] = [];
   const byId = new Map<string, EligibilityResult>();
   let outOfFocus = 0;
+  let hiddenByYou = 0;
   for (const dish of catalog.dishes) {
     const r = evaluateEligibility(dish, constraints);
     byId.set(dish.id, r);
     if (r.eligible) eligible.push(dish);
     else if (r.excludedBy.length > 0) excluded.push(r);
-    else outOfFocus++;
+    else if (r.outOfFocus) outOfFocus++;
+    else hiddenByYou++;
   }
-  return { eligible, excluded, outOfFocus, byId };
+  return { eligible, excluded, outOfFocus, hiddenByYou, byId };
 }

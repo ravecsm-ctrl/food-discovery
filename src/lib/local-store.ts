@@ -4,7 +4,7 @@
  * optional one-way backup to the person's own private GitHub repo (see cloud-backup.ts).
  * All access is wrapped so private mode / blocked storage degrades to in-memory behavior.
  */
-import type { ConfirmedMeal, ReasonCode, RestrictionKey } from "@/engine";
+import type { ConfirmedMeal, ReasonCode, RestrictionKey, StrongPreference } from "@/engine";
 
 const KEYS = {
   sessions: "fd.eval.sessions.v1",
@@ -15,10 +15,12 @@ const KEYS = {
   /** Previous per-tab key, read once for migration. */
   restrictionsLegacy: "fd.restrictions.session.v1",
   profile: "fd.profile.v1",
+  /** "Love it" / "Not for a while" / "Never show again" (strong-prefs.ts). */
+  strongPrefs: "fd.strongprefs.v1",
 } as const;
 
 /** Keys whose content is part of the personal backup (never the cloud token, never restrictions). */
-const BACKED_UP = new Set<string>([KEYS.sessions, KEYS.meals, KEYS.assignment, KEYS.profile]);
+const BACKED_UP = new Set<string>([KEYS.sessions, KEYS.meals, KEYS.assignment, KEYS.profile, KEYS.strongPrefs]);
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -62,8 +64,11 @@ const session = () => window.sessionStorage;
 
 /* ---------------- evaluation records ---------------- */
 
-/** "yes"/"no" = one (shared) reaction · "a"/"b" = Together disagreement: only that person wanted it. */
-export type ReactionCode = "yes" | "no" | "a" | "b";
+/**
+ * "yes"/"no" = one (shared) reaction · "a"/"b" = Together disagreement: only that person wanted it ·
+ * "super_yes"/"super_no" = solo "Love it" / "Not for a while" (explicit strength).
+ */
+export type ReactionCode = "yes" | "no" | "a" | "b" | "super_yes" | "super_no";
 
 export interface ExposureRecord {
   position: number;
@@ -167,13 +172,34 @@ export function updateMeal(id: string, patch: Partial<Pick<ConfirmedMeal, "dishI
   );
 }
 
+/* ---------------- strong preferences (one per dish) ---------------- */
+
+export function listStrongPrefs(): StrongPreference[] {
+  return read<StrongPreference[]>(local, KEYS.strongPrefs, []);
+}
+
+export function getStrongPref(dishId: string): StrongPreference | null {
+  return listStrongPrefs().find((p) => p.dishId === dishId) ?? null;
+}
+
+/** Save (or replace) the preference for a dish; `null` removes it. */
+export function setStrongPref(dishId: string, pref: StrongPreference | null): void {
+  write(local, KEYS.strongPrefs, [...listStrongPrefs().filter((p) => p.dishId !== dishId), ...(pref ? [pref] : [])]);
+}
+
 /** Apply changes that arrived from the person's cloud copy (merge, never wholesale replace). */
 export function applyCloudChanges(c: {
   upsertMeals: ConfirmedMeal[];
   removeMeals: string[];
   upsertSessions: EvalSessionRecord[];
   varietySeeking: number | null;
+  upsertPrefs?: StrongPreference[];
+  removePrefs?: string[];
 }): void {
+  if (c.upsertPrefs?.length || c.removePrefs?.length) {
+    const drop = new Set([...(c.removePrefs ?? []), ...(c.upsertPrefs ?? []).map((p) => p.dishId)]);
+    write(local, KEYS.strongPrefs, [...listStrongPrefs().filter((p) => !drop.has(p.dishId)), ...(c.upsertPrefs ?? [])]);
+  }
   if (c.upsertMeals.length || c.removeMeals.length) {
     const drop = new Set([...c.removeMeals, ...c.upsertMeals.map((m) => m.id)]);
     write(local, KEYS.meals, [...listMeals().filter((m) => !drop.has(m.id)), ...c.upsertMeals]);
@@ -238,10 +264,11 @@ export interface BackupData {
   meals: ConfirmedMeal[];
   assignment: AssignmentSetting;
   profile: Profile;
+  strongPrefs?: StrongPreference[];
 }
 
 export function snapshot(): BackupData {
-  return { sessions: listEvalSessions(), meals: listMeals(), assignment: getAssignmentSetting(), profile: getProfile() };
+  return { sessions: listEvalSessions(), meals: listMeals(), assignment: getAssignmentSetting(), profile: getProfile(), strongPrefs: listStrongPrefs() };
 }
 
 /** Replace all backed-up data (restore). Does not trigger a new backup by itself. */
@@ -252,13 +279,14 @@ export function replaceAll(data: BackupData): void {
     write(local, KEYS.meals, data.meals);
     write(local, KEYS.assignment, data.assignment);
     write(local, KEYS.profile, data.profile);
+    if (data.strongPrefs) write(local, KEYS.strongPrefs, data.strongPrefs);
   } finally {
     muted = false;
   }
 }
 
 export function hasLocalData(): boolean {
-  return listEvalSessions().length > 0 || listMeals().length > 0;
+  return listEvalSessions().length > 0 || listMeals().length > 0 || listStrongPrefs().length > 0;
 }
 
 /* ---------------- maintenance ---------------- */

@@ -141,6 +141,8 @@ export interface UserModel {
    * 0.5 = "I like routine", 1 = normal, 1.5 = "I get bored quickly". Defaults to 1.
    */
   varietySeeking?: number;
+  /** Dishes the person saved with "Love it" (strong-prefs.ts). Used for reasons; taste comes via weights. */
+  favouriteDishIds?: string[];
 }
 
 export interface SessionConstraints {
@@ -154,6 +156,8 @@ export interface SessionConstraints {
   focus?: import("./mood.ts").SessionFocus;
   /** Which meal this session is for (from the clock, or chosen by the person). */
   mealTime?: import("./meal-time.ts").MealTime;
+  /** Dishes the person hid ("Not for a while" / "Never show again"). A taste choice, not a dietary rule. */
+  hiddenDishIds?: string[];
 }
 
 export interface PolicyContext {
@@ -171,6 +175,8 @@ export type ReasonCode =
   | "RECENT_FOOD_VARIETY"
   /** Extension (owner request 2026-11-07): a good fit for the meal this session is for. */
   | "MEAL_TIME_FIT"
+  /** Extension (owner request 2026-11-07): the person saved this dish with "Love it". */
+  | "SAVED_FAVOURITE"
   | "NOVELTY_EXPLORATION"
   | "HARD_CONSTRAINT_EXCLUDED"
   | "FULFILLMENT_UNVERIFIED"

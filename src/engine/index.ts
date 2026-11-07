@@ -14,3 +14,4 @@ export * from "./own-dish.ts";
 export * from "./taste.ts";
 export * from "./mood.ts";
 export * from "./meal-time.ts";
+export * from "./strong-prefs.ts";

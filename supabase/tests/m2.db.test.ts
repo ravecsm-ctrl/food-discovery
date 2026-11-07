@@ -26,6 +26,8 @@ const RPCS = [
   "delete_meal(uuid,uuid)",
   "get_my_data()",
   "delete_my_account()",
+  "save_strong_preference(uuid,jsonb)",
+  "delete_strong_preference(uuid,text)",
 ];
 
 interface Exposure {
@@ -300,6 +302,7 @@ describe("ENG-027 account deletion (R-024, AT-031)", () => {
     await db.as(D, "select public.accept_cloud_consent('privacy-v1')");
     await sync(db, D, 0, session(uuid(40), { events: [{ type: "dish_selected", at: NOW, dishId: "dish-chicken-adobo", rank: 1, runIndex: 0 }] }));
     await db.as(D, "select public.save_meal($1, $2)", [rid(), JSON.stringify({ id: uuid(41), dishId: "dish-bulalo", consumedAt: NOW, source: "manual" })]);
+    await db.as(D, "select public.save_strong_preference($1, $2)", [rid(), JSON.stringify({ dishId: "dish-bulalo", kind: "favourite", at: NOW })]);
     const bBefore = await myData(db, B);
     const catalogBefore = await db.admin("select count(*) from public.dish_variants");
 
@@ -310,7 +313,8 @@ describe("ENG-027 account deletion (R-024, AT-031)", () => {
       (select count(*) from public.discovery_sessions where host_user_id=$1) + (select count(*) from public.meal_records where owner_user_id=$1)
       + (select count(*) from public.domain_events where actor_user_id=$1) + (select count(*) from public.consent_records where owner_id=$1)
       + (select count(*) from public.profiles where user_id=$1) + (select count(*) from public.idempotency_keys where owner_user_id=$1)
-      + (select count(*) from public.card_exposures where session_id=$2) + (select count(*) from auth.users where id=$1) as n`, [D, uuid(40)]);
+      + (select count(*) from public.card_exposures where session_id=$2) + (select count(*) from auth.users where id=$1)
+      + (select count(*) from public.strong_preferences where owner_user_id=$1) as n`, [D, uuid(40)]);
     expect(Number(leftovers[0]!.n)).toBe(0);
     const [req] = await db.admin<{ status: string; owner_user_id: string | null }>("select status, owner_user_id from public.deletion_requests where id=$1", [r!.r.deletionRequestId]);
     expect(req).toEqual({ status: "completed", owner_user_id: null });
@@ -468,5 +472,67 @@ describe("library step 3: meal ratings (R-016)", () => {
     const id = uuid(802);
     await db.as(B, "select public.save_meal($1, $2)", [rid(), JSON.stringify({ id, dishId: "dish-bulalo", consumedAt: NOW, source: "manual" })]);
     await expect(save(id, { rating: 1 })).rejects.toThrow(/NOT_FOUND/);
+  });
+});
+
+describe("strong preferences: Love it / Not for a while / Never (owner request 2026-11-07)", () => {
+  const T = new Date(Date.now() - 60_000).toISOString();
+  const later = (days: number) => new Date(Date.parse(T) + days * 86_400_000).toISOString();
+  const save = (user: string, pref: Record<string, unknown>) => db.as(user, "select public.save_strong_preference($1, $2)", [rid(), JSON.stringify(pref)]);
+  const prefsOf = async (user: string) => ((await myData(db, user)) as unknown as { strongPreferences: unknown[] }).strongPreferences;
+
+  it("saves, replaces (one per dish) and deletes my preferences — only mine", async () => {
+    await save(A, { dishId: "dish-bulalo", kind: "favourite", at: T });
+    await save(A, { dishId: "dish-dinuguan", kind: "snooze", at: T, until: later(30) });
+    expect(await prefsOf(A)).toEqual([
+      { dishId: "dish-bulalo", kind: "favourite", at: T },
+      { dishId: "dish-dinuguan", kind: "snooze", at: T, until: later(30) },
+    ]);
+    await save(A, { dishId: "dish-dinuguan", kind: "never", at: T });
+    expect(await prefsOf(A)).toContainEqual({ dishId: "dish-dinuguan", kind: "never", at: T });
+    expect(await prefsOf(B)).toEqual([]);
+    await db.as(B, "select public.delete_strong_preference($1, $2)", [rid(), "dish-bulalo"]);
+    expect(await prefsOf(A)).toHaveLength(2); // B can't delete mine
+    await db.as(A, "select public.delete_strong_preference($1, $2)", [rid(), "dish-bulalo"]);
+    expect(await prefsOf(A)).toEqual([{ dishId: "dish-dinuguan", kind: "never", at: T }]);
+  });
+
+  it("validates dish, kind and snooze dates", async () => {
+    await expect(save(A, { dishId: "dish-nope", kind: "favourite", at: T })).rejects.toThrow(/dishId/);
+    await expect(save(A, { dishId: "dish-bulalo", kind: "allergy", at: T })).rejects.toThrow(/kind/);
+    await expect(save(A, { dishId: "dish-bulalo", kind: "snooze", at: T })).rejects.toThrow(/until/);
+    await expect(save(A, { dishId: "dish-bulalo", kind: "snooze", at: T, until: T })).rejects.toThrow(/until/);
+    await expect(save(A, { dishId: "dish-bulalo", kind: "favourite", at: later(5) })).rejects.toThrow(/future/);
+  });
+
+  it("needs consent", async () => {
+    const C = "cccccccc-0000-4000-8000-000000000909";
+    await db.addUser(C);
+    await expect(save(C, { dishId: "dish-bulalo", kind: "favourite", at: T })).rejects.toThrow(/CONSENT_REQUIRED/);
+  });
+
+  it("super reactions round-trip as explicit-strength reactions, including undo history", async () => {
+    const sid = uuid(950);
+    const s = session(sid);
+    s.exposures[0] = { ...s.exposures[0]!, reaction: "super_no", undoneReactions: ["super_yes"] };
+    await sync(db, A, 0, s);
+    const back = (await myData(db, A)).sessions.find((x) => x.sessionId === sid) as { exposures: Exposure[] };
+    expect(back.exposures[0]).toMatchObject({ reaction: "super_no", undoneReactions: ["super_yes"] });
+    const rows = await db.admin<{ reaction: string; strength: string }>(
+      "select r.reaction, r.strength from public.reaction_events r join public.card_exposures e on e.id = r.exposure_id where e.session_id = $1 order by r.sequence",
+      [sid],
+    );
+    expect(rows).toEqual([{ reaction: "yes", strength: "explicit" }, { reaction: "no", strength: "explicit" }]);
+    // Replaying the same history is fine; rewriting its strength is not.
+    await sync(db, A, 2, s);
+    const changed = session(sid);
+    changed.exposures[0] = { ...changed.exposures[0]!, reaction: "no", undoneReactions: ["super_yes"] };
+    await expect(sync(db, A, 3, changed)).rejects.toThrow(/conflicts/);
+  });
+
+  it("Together sessions can't carry super reactions", async () => {
+    const s = session(uuid(951), { mode: "together" });
+    s.exposures[0] = { ...s.exposures[0]!, reaction: "super_yes" };
+    await expect(sync(db, A, 0, s)).rejects.toThrow(/unknown reaction/);
   });
 });

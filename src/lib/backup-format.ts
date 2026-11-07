@@ -36,6 +36,9 @@ const FileSchema = z.object({
     meals: z.array(MealSchema),
     assignment: z.string(),
     profile: z.object({ varietySeeking: z.number().min(0).max(2) }).passthrough(),
+    strongPrefs: z
+      .array(z.object({ dishId: z.string(), kind: z.enum(["favourite", "snooze", "never"]), at: z.string(), until: z.string().nullable().optional() }))
+      .optional(),
   }),
 });
 

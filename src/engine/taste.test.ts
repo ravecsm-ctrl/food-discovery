@@ -60,7 +60,7 @@ describe("taste in recommendations (R-008: stable ≠ current)", () => {
     expect(brothyShare(withTaste)).toBeGreaterThanOrEqual(brothyShare(plain));
     const stableItem = withTaste.items.find((i) => i.reasonCodes.includes("STABLE_PREFERENCE_MATCH"));
     expect(stableItem).toBeDefined();
-    expect(explainItem(stableItem!, catalog).map((e) => e.text).join(" ")).toMatch(/You've rated .* dishes highly\./);
+    expect(explainItem(stableItem!, catalog).map((e) => e.text).join(" ")).toMatch(/You've liked .* dishes before\./);
   });
 
   it("tonight's swipes still win over long-term taste (current weight > stable weight)", () => {

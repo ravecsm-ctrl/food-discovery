@@ -28,7 +28,7 @@ export interface RecommendationItem {
     recentMealsConsidered: number;
     /** Recently eaten qualities (e.g. "method:fried", "style:comfort") this dish is a change from. */
     varietyFrom: string[];
-    /** Qualities of this dish the person has rated highly before (long-term taste). */
+    /** Qualities of this dish the person has rated highly or saved as favourites (long-term taste). */
     stableFrom: string[];
     /** The meal this dish is a good fit for (when MEAL_TIME_FIT applies). */
     mealTime?: MealTime;
@@ -64,6 +64,7 @@ export function inputDigest(session: DiscoverySession, deps: EngineDeps): string
     tm: session.togetherMeals.map((m) => [m.id, m.dishId, m.consumedAt, m.who]),
     m: deps.user.confirmedMeals.map((m) => [m.id, m.dishId, m.consumedAt, m.ownDish ? JSON.stringify(m.ownDish) : ""]),
     w: deps.user.stableAttributeWeights,
+    f: deps.user.favouriteDishIds ?? [],
     n: deps.user.noveltyPreference,
     v: deps.user.varietySeeking ?? 1,
     t: deps.policy.exposure.enabled || deps.policy.fatigue.enabled ? deps.now : null,
@@ -81,6 +82,7 @@ function reasonCodesFor(
 ): ReasonCode[] {
   const r = deps.policy.reasons;
   const codes: ReasonCode[] = [];
+  if (deps.user.favouriteDishIds?.includes(score.dishId)) codes.push("SAVED_FAVOURITE");
   if (score.current >= r.currentPositiveMin && score.supportingLikes.length > 0) codes.push("CURRENT_SESSION_POSITIVE");
   if (score.stable >= r.stableMatchMin) codes.push("STABLE_PREFERENCE_MATCH");
   if (deps.policy.utilityWeights.novelty * score.novelty >= r.noveltyMin) codes.push("NOVELTY_EXPLORATION");
@@ -271,6 +273,7 @@ export function quickPicks(session: DiscoverySession, deps: EngineDeps): Recomme
     const varietyFrom = varietyEvidence(d, load, cfg);
     const score = scoreDish(d, inputs);
     const reasonCodes: ReasonCode[] = [];
+    if (deps.user.favouriteDishIds?.includes(d.id)) reasonCodes.push("SAVED_FAVOURITE");
     if (varietyFrom.length > 0) reasonCodes.push("RECENT_FOOD_VARIETY");
     if (mtCfg.enabled && score.mealFit >= mtCfg.reasonMin) reasonCodes.push("MEAL_TIME_FIT");
     reasonCodes.push("FULFILLMENT_UNVERIFIED", "INSUFFICIENT_EVIDENCE");

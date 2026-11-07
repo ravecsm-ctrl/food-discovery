@@ -17,7 +17,9 @@ export function exposureRecords(session: DiscoverySession, traces: Record<string
     for (const r of session.reactions.filter((x) => x.exposureId === e.exposureId)) groups.set(r.actionGroupId, [...(groups.get(r.actionGroupId) ?? []), r]);
     const code = (g: Reaction[]): ReactionCode => {
       const wanted = g.find((r) => r.participant && r.value === "yes");
-      return wanted?.participant ?? (g[0] as Reaction).value;
+      if (wanted?.participant) return wanted.participant;
+      const r = g[0] as Reaction;
+      return r.strength === "explicit" ? (r.value === "yes" ? "super_yes" : "super_no") : r.value;
     };
     const all = [...groups.values()];
     const active = all.find((g) => g.some((r) => r.active));
@@ -94,7 +96,7 @@ export function summarize(all: EvalSessionRecord[]): PolicySummary[] {
       sessionsWithResults: withRuns.length,
       sessionsWithSelection: rs.filter((r) => r.events.some((e) => e.type === "dish_selected")).length,
       medianCardsToFirstResults: median(withRuns.map((r) => (r.recommendationRuns[0] as RecommendationRunRecord).effectiveCards)),
-      yesRate: reacted.length ? reacted.filter((e) => e.reaction === "yes").length / reacted.length : null,
+      yesRate: reacted.length ? reacted.filter((e) => e.reaction === "yes" || e.reaction === "super_yes").length / reacted.length : null,
       mealsConfirmed: meals.length,
       mealsMatchingSelection: meals.filter((m) => m.type === "meal_consumption_confirmed" && m.matchesSelection).length,
       ratings: ratings.length,

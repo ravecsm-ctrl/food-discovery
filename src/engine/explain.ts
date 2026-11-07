@@ -139,11 +139,14 @@ export function explainItem(
         }
         break;
       }
+      case "SAVED_FAVOURITE":
+        out.push({ code, text: "One of your favourites." });
+        break;
       case "STABLE_PREFERENCE_MATCH": {
-        // Grounded in rated meals only (taste-v0): name the qualities, never invent a habit.
+        // Grounded in rated meals and saved favourites only (taste-v1): name the qualities, never invent a habit.
         const from = item.evidence.stableFrom ?? [];
         const words = from.map((a) => (a.startsWith("cuisine:") ? cuisineName(a.slice(8)) : attributeWord(a)));
-        out.push({ code, text: words.length > 0 ? `You've rated ${joinAnd(words)} dishes highly.` : "Similar to meals you've rated highly." });
+        out.push({ code, text: words.length > 0 ? `You've liked ${joinAnd(words)} dishes before.` : "Similar to dishes you've liked before." });
         break;
       }
       case "RECENT_FOOD_VARIETY":
